@@ -16,12 +16,7 @@
     <dependencies>
         <dependency>
             <groupId>com.nexusadmin</groupId>
-            <artifactId>nexus-admin-core</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.nexusadmin</groupId>
-            <artifactId>nexus-admin-plugin</artifactId>
+            <artifactId>nexus-admin-api</artifactId>
             <version>${project.version}</version>
         </dependency>
 

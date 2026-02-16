@@ -14,5 +14,19 @@
     <packaging>jar</packaging>
 
     <dependencies>
+        <dependency>
+            <groupId>com.nexusadmin</groupId>
+            <artifactId>nexus-admin-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.eclipsesource.minimal-json</groupId>
+            <artifactId>minimal-json</artifactId>
+            <version>0.9.5</version>
+        </dependency>
     </dependencies>
 </project>

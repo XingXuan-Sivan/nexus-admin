@@ -20,16 +20,6 @@
             <artifactId>nexus-admin-core</artifactId>
             <version>${project.version}</version>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>com.nexusadmin</groupId>-->
-<!--            <artifactId>nexus-admin-infra</artifactId>-->
-<!--            <version>${project.version}</version>-->
-<!--        </dependency>-->
-        <dependency>
-            <groupId>com.nexusadmin</groupId>
-            <artifactId>nexus-admin-plugin</artifactId>
-            <version>${project.version}</version>
-        </dependency>
 
         <!-- 第三方依赖 -->
         <dependency>

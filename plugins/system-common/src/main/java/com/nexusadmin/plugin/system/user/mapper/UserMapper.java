@@ -1,7 +1,7 @@
 package com.nexusadmin.plugin.system.user.mapper;
 
 import com.mybatisflex.core.BaseMapper;
-import com.nexusadmin.core.domain.identity.User;
+import com.nexusadmin.api.domain.identity.User;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;

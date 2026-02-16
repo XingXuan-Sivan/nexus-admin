@@ -1,6 +1,6 @@
 package com.nexusadmin.plugin.system.user.service;
 
-import com.nexusadmin.core.domain.identity.User;
+import com.nexusadmin.api.domain.identity.User;
 
 import java.util.List;
 

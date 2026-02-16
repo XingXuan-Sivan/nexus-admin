@@ -1,8 +1,6 @@
 package com.nexusadmin.plugin.system.user.service.impl;
 
-import com.mybatisflex.spring.service.impl.ServiceImpl;
-import com.nexusadmin.core.domain.identity.User;
-import com.nexusadmin.plugin.system.user.mapper.UserMapper;
+import com.nexusadmin.api.domain.identity.User;
 import com.nexusadmin.plugin.system.user.service.UserService;
 import org.springframework.stereotype.Service;
 

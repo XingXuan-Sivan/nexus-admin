@@ -1,5 +1,0 @@
-name: system-user-plugin
-id: system-user-plugin
-version: 1.0.0
-mainClass: com.nexusadmin.plugin.system.user.SystemUserPlugin
-description: 用户管理插件
