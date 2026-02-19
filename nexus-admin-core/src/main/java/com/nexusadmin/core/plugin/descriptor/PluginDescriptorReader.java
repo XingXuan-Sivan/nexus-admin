@@ -1,6 +1,6 @@
 package com.nexusadmin.core.plugin.descriptor;
 
-import com.nexusadmin.api.PluginDescriptor;
+import com.nexusadmin.core.plugin.PluginDescriptor;
 import com.nexusadmin.core.registry.Composable;
 
 import java.nio.file.Path;
@@ -17,7 +17,7 @@ public interface PluginDescriptorReader extends Composable {
      *
      * @param pluginPath 插件路径（目录或 JAR）
      * @return 插件描述对象
-     * @throws com.nexusadmin.api.exception.DescriptorParseException 当读取或解析失败时抛出
+     * @throws com.nexusadmin.core.exception.DescriptorParseException 当读取或解析失败时抛出
      */
     PluginDescriptor read(Path pluginPath);
 

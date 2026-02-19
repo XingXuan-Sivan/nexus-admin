@@ -1,14 +1,12 @@
-package com.nexusadmin.api;
+package com.nexusadmin.core.context;
 
-import com.nexusadmin.api.extension.ExtensionRegistry;
+import com.nexusadmin.core.extension.ExtensionRegistry;
+import com.nexusadmin.core.plugin.PluginDescriptor;
 
 import java.nio.file.Path;
 
 /**
  * 插件运行上下文，封装插件在平台中的元数据、扩展注册中心及类加载等信息。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public final class PluginContext {
     /**

@@ -1,11 +1,10 @@
-package com.nexusadmin.api;
+package com.nexusadmin.core.plugin;
+
+import com.nexusadmin.core.context.PluginContext;
 
 /**
  * 插件生命周期接口，所有可被平台加载的插件都需要实现该接口。
  * <p>通过 {@link #start(PluginContext)} 和 {@link #stop(PluginContext)} 方法完成扩展点注册与资源管理。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface Plugin {
 

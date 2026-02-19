@@ -1,4 +1,4 @@
-package com.nexusadmin.api.extension;
+package com.nexusadmin.core.extension;
 
 import java.util.List;
 import java.util.Optional;
@@ -8,8 +8,6 @@ import java.util.Optional;
  * <p>负责注册、注销以及查询各类扩展点的实现。</p>
  * <p>扩展注册中心是插件化架构的核心组件，支持多实现、优先级排序、插件级生命周期管理。</p>
  *
- * @author NexusAdmin
- * @since 1.0.0
  * @see ExtensionPoint
  * @see Extension
  */

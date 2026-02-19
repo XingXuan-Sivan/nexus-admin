@@ -5,9 +5,6 @@ import java.util.Objects;
 /**
  * 扩展元数据。
  * <p>用于描述扩展实现的基本信息，在索引存储和发现过程中传递。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public final class ExtensionMetadata {
 

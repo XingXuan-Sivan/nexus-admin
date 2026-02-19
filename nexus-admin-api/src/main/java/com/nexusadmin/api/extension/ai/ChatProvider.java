@@ -1,7 +1,7 @@
 package com.nexusadmin.api.extension.ai;
 
 import com.nexusadmin.api.context.CoreContext;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,9 +9,6 @@ import java.util.Map;
 
 /**
  * 对话模型扩展点，负责根据会话上下文和用户消息生成回复。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface ChatProvider extends ExtensionPoint {
 

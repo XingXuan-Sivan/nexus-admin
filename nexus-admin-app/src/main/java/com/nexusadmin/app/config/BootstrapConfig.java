@@ -1,6 +1,6 @@
 package com.nexusadmin.app.config;
 
-import com.nexusadmin.api.extension.ExtensionRegistry;
+import com.nexusadmin.core.extension.ExtensionRegistry;
 import com.nexusadmin.app.config.properties.PlatformProperties;
 import com.nexusadmin.core.extension.DefaultExtensionRegistry;
 import com.nexusadmin.core.plugin.PluginManager;
@@ -41,9 +41,6 @@ import java.util.Optional;
  *   <li>按核心组件大类组织配置，避免配置类膨胀</li>
  *   <li>支持选择性启用组件，方便未来扩展</li>
  * </ul>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 @Configuration
 public class BootstrapConfig {

@@ -28,24 +28,12 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-logging</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-freemarker</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
-        </dependency>
-
-        <!-- 系统插件依赖：用于开发环境下的协同编译与自动加载 -->
-        <dependency>
-            <groupId>com.nexusadmin</groupId>
-            <artifactId>system-user-plugin</artifactId>
-            <version>${project.version}</version>
-            <optional>true</optional>
         </dependency>
     </dependencies>
 

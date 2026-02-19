@@ -1,7 +1,7 @@
 package com.nexusadmin.core.plugin.descriptor.reader;
 
-import com.nexusadmin.api.PluginDescriptor;
-import com.nexusadmin.api.exception.DescriptorParseException;
+import com.nexusadmin.core.plugin.PluginDescriptor;
+import com.nexusadmin.core.exception.DescriptorParseException;
 import com.nexusadmin.core.plugin.descriptor.PluginDescriptorParser;
 import com.nexusadmin.core.plugin.descriptor.PluginDescriptorReader;
 import com.nexusadmin.core.plugin.descriptor.PluginDescriptorFinder;

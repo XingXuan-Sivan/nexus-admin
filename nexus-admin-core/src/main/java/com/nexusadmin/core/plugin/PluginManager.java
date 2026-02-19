@@ -1,9 +1,8 @@
 package com.nexusadmin.core.plugin;
 
-import com.nexusadmin.api.Plugin;
-import com.nexusadmin.api.PluginContext;
-import com.nexusadmin.api.extension.ExtensionRegistry;
-import com.nexusadmin.api.exception.PluginLoadException;
+import com.nexusadmin.core.context.PluginContext;
+import com.nexusadmin.core.extension.ExtensionRegistry;
+import com.nexusadmin.core.exception.PluginLoadException;
 import com.nexusadmin.core.plugin.event.PluginLifecycleEvent;
 import com.nexusadmin.core.plugin.event.PluginLifecycleListener;
 import com.nexusadmin.core.plugin.loader.CandidatePlugin;
@@ -28,10 +27,6 @@ import java.util.stream.Collectors;
  *   <li>通过构造函数注入所需组件，不再提供注册方法</li>
  *   <li>插件卸载时自动清理该插件注册的所有扩展点实现</li>
  * </ul>
- *
- * @author NexusAdmin
- * @since 1.0.0
- * @see com.nexusadmin.core.registry.ComponentRegistry
  */
 public class PluginManager {
 

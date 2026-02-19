@@ -1,4 +1,4 @@
-package com.nexusadmin.api.exception;
+package com.nexusadmin.core.exception;
 
 public class PluginException extends RuntimeException {
     public PluginException(String message) {

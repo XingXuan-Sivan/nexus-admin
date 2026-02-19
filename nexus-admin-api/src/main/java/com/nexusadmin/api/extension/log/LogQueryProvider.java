@@ -4,7 +4,7 @@ import com.nexusadmin.api.context.CoreContext;
 import com.nexusadmin.api.domain.log.LogEntry;
 import com.nexusadmin.api.domain.log.LogLevel;
 import com.nexusadmin.api.domain.log.LogType;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -14,9 +14,6 @@ import java.util.Map;
 
 /**
  * 日志查询扩展点，用于按条件检索平台产生的日志记录。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface LogQueryProvider extends ExtensionPoint {
 

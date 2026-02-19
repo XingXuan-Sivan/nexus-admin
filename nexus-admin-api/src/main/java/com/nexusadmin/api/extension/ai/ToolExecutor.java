@@ -1,7 +1,7 @@
 package com.nexusadmin.api.extension.ai;
 
 import com.nexusadmin.api.context.CoreContext;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,9 +9,6 @@ import java.util.Map;
 
 /**
  * 工具执行器扩展点，用于根据工具调用请求执行外部工具并返回结果。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface ToolExecutor extends ExtensionPoint {
 

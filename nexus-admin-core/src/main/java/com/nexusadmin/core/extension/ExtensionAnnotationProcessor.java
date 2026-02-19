@@ -1,8 +1,6 @@
-package com.nexusadmin.api.processor;
+package com.nexusadmin.core.extension;
 
 import com.google.auto.service.AutoService;
-import com.nexusadmin.api.extension.Extension;
-import com.nexusadmin.api.extension.ExtensionPoint;
 
 import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
@@ -23,12 +21,9 @@ import java.util.*;
  * 扩展注解处理器。
  * <p>在编译期扫描所有 {@link Extension} 注解的类，自动生成扩展索引文件。</p>
  * <p>生成的索引文件位于 {@code META-INF/extensions.idx}，每行包含一个扩展实现类全限定名。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 @AutoService(Processor.class)
-@SupportedAnnotationTypes("com.nexusadmin.api.extension.Extension")
+@SupportedAnnotationTypes("com.nexusadmin.core.extension.Extension")
 @SupportedSourceVersion(SourceVersion.RELEASE_17)
 public class ExtensionAnnotationProcessor extends AbstractProcessor {
 

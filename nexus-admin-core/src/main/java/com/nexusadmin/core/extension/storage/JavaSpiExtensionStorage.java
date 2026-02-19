@@ -16,9 +16,6 @@ import java.util.List;
  * 兼容 Java SPI 机制的扩展存储实现。
  * <p>从类路径下的 META-INF/services/ 目录读取扩展实现类名列表，兼容标准 Java SPI 格式。</p>
  * <p>该实现允许逐步迁移旧的 SPI 实现到新的 ExtensionPoint 体系，无需立即修改所有插件。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public class JavaSpiExtensionStorage implements ExtensionStorage {
 

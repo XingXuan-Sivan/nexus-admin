@@ -1,7 +1,7 @@
 package com.nexusadmin.api.extension.cache;
 
 import com.nexusadmin.api.context.CoreContext;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,9 +10,6 @@ import java.util.Optional;
 
 /**
  * 缓存扩展点，用于统一访问和管理不同底层实现的缓存数据。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface CacheProvider extends ExtensionPoint {
 

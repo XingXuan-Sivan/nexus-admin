@@ -2,16 +2,13 @@ package com.nexusadmin.api.extension.log;
 
 import com.nexusadmin.api.context.CoreContext;
 import com.nexusadmin.api.domain.log.LogEntry;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.time.Duration;
 import java.time.Instant;
 
 /**
  * 日志保留策略扩展点，用于根据日志内容与默认保留时间决定是否保留以及过期时间。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface LogRetentionPolicy extends ExtensionPoint {
 

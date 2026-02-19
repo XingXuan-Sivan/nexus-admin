@@ -1,6 +1,6 @@
 package com.nexusadmin.core.plugin.source;
 
-import com.nexusadmin.api.PluginDescriptor;
+import com.nexusadmin.core.plugin.PluginDescriptor;
 import com.nexusadmin.core.plugin.descriptor.PluginDescriptorParser;
 import com.nexusadmin.core.plugin.loader.CandidatePlugin;
 import com.nexusadmin.core.plugin.loader.SourceType;

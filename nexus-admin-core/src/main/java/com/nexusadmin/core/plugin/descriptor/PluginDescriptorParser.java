@@ -1,6 +1,6 @@
 package com.nexusadmin.core.plugin.descriptor;
 
-import com.nexusadmin.api.PluginDescriptor;
+import com.nexusadmin.core.plugin.PluginDescriptor;
 import com.nexusadmin.core.registry.Composable;
 
 /**

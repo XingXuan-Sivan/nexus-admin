@@ -1,7 +1,7 @@
 package com.nexusadmin.api.extension.ai;
 
 import com.nexusadmin.api.context.CoreContext;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,9 +9,6 @@ import java.util.Map;
 
 /**
  * 智能体策略扩展点，用于根据请求与平台上下文决定是否允许某个 Agent 以及下发相关参数。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface AgentPolicy extends ExtensionPoint {
 

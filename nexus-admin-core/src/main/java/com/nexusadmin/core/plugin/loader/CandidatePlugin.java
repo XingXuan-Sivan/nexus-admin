@@ -1,6 +1,6 @@
 package com.nexusadmin.core.plugin.loader;
 
-import com.nexusadmin.api.PluginDescriptor;
+import com.nexusadmin.core.plugin.PluginDescriptor;
 
 import java.nio.file.Path;
 

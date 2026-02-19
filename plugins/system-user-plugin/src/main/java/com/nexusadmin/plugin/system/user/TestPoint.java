@@ -1,7 +1,7 @@
 package com.nexusadmin.plugin.system.user;
 
 import com.nexusadmin.api.context.CoreContext;
-import com.nexusadmin.api.extension.Extension;
+import com.nexusadmin.core.extension.Extension;
 import com.nexusadmin.api.extension.auth.AuthProvider;
 
 @Extension(points = {AuthProvider.class})

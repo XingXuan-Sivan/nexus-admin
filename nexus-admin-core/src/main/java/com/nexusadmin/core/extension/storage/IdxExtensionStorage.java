@@ -16,9 +16,6 @@ import java.util.List;
  * 基于 META-INF/extensions.idx 文件的扩展存储实现。
  * <p>从类路径下的 META-INF/extensions.idx 文件中读取扩展实现类名列表。</p>
  * <p>索引文件格式：每行一个扩展实现类全限定名，忽略空行和注释行（以 # 开头）。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public class IdxExtensionStorage implements ExtensionStorage {
 

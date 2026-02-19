@@ -1,16 +1,13 @@
 package com.nexusadmin.core.plugin.loader;
 
-import com.nexusadmin.api.extension.ExtensionRegistry;
-import com.nexusadmin.api.Plugin;
-import com.nexusadmin.api.PluginDescriptor;
-import com.nexusadmin.api.exception.PluginLoadException;
+import com.nexusadmin.core.extension.ExtensionRegistry;
+import com.nexusadmin.core.plugin.Plugin;
+import com.nexusadmin.core.plugin.PluginDescriptor;
+import com.nexusadmin.core.exception.PluginLoadException;
 
 /**
  * 类路径插件加载器，负责从当前运行环境的类路径中加载插件。
  * <p>适用于内置插件，直接使用当前线程上下文类加载器。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public class ClasspathPluginLoader implements PluginLoader {
 

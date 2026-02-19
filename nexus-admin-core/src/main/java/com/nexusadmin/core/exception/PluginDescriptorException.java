@@ -1,4 +1,4 @@
-package com.nexusadmin.api.exception;
+package com.nexusadmin.core.exception;
 
 public class PluginDescriptorException extends PluginException {
     public PluginDescriptorException(String message) {

@@ -1,7 +1,7 @@
 package com.nexusadmin.api.extension.ai;
 
 import com.nexusadmin.api.context.CoreContext;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,9 +10,6 @@ import java.util.Map;
 
 /**
  * 检索增强生成（RAG）扩展点，用于按查询条件检索相关文档并返回摘要等信息。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface RagProvider extends ExtensionPoint {
 

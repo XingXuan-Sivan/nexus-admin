@@ -1,6 +1,6 @@
 package com.nexusadmin.core.extension.finder;
 
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 import com.nexusadmin.core.extension.ExtensionWrapper;
 
 import java.util.List;
@@ -9,9 +9,6 @@ import java.util.List;
  * 扩展发现器接口。
  * <p>负责从指定类加载器中发现扩展点及其实现。</p>
  * <p>该接口支持多实现、可配置、可组合，允许从不同来源发现扩展实现。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface ExtensionFinder {
 

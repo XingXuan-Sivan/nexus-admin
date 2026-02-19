@@ -1,7 +1,7 @@
 package com.nexusadmin.api.extension.routing;
 
 import com.nexusadmin.api.context.CoreContext;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,9 +9,6 @@ import java.util.Map;
 
 /**
  * 路由策略扩展点，用于根据请求路径、方法等信息决定目标路由或是否放行。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface RoutingPolicy extends ExtensionPoint {
 

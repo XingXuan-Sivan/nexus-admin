@@ -2,13 +2,10 @@ package com.nexusadmin.api.extension.log;
 
 import com.nexusadmin.api.context.CoreContext;
 import com.nexusadmin.api.domain.log.LogEntry;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 /**
  * 日志写入扩展点，用于将规范化的日志条目输出到具体日志存储或管道。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface LogWriter extends ExtensionPoint {
 

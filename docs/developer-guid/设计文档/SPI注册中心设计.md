@@ -30,18 +30,18 @@ SPI 注册中心用于统一管理系统中具备多实现能力的核心组件�
 
 ```mermaid
 graph TD
-    subgraph api模块[api 模块（契约层）]
-        A[SpiRegistry<br/>（接口）]
-        B[@SpiImplementation<br/>（注解支持）]
-        C[CoreComponent<br/>（标记接口）]
+    subgraph core模块[core 模块（核心层）]
+        A[ComponentRegistry<br/>（组件注册中心）]
+        B[Plugin/PluginContext/PluginDescriptor<br/>（插件核心API）]
+        subgraph 复合体系[Composite 体系]
+            C[Composite<br/>（组合接口）]
+            D[Composable<br/>（可组合标记）]
+        end
     end
 
-    subgraph core模块[core 模块（实现层）]
-        D[ComponentRegistry<br/>（无框架依赖）]
-        subgraph 复合体系[Composite 体系]
-            E[Composite<br/>（组合接口）]
-            F[Composable<br/>（可组合标记）]
-        end
+    subgraph api模块[api 模块（SPI契约层）]
+        E[ExtensionRegistry<br/>（扩展注册中心接口）]
+        F[ExtensionPoint/Extension<br/>（扩展点体系）]
     end
 
     subgraph app模块[app 模块（配置层）]
@@ -49,8 +49,8 @@ graph TD
     end
 
     %% 定义样式以模拟原始框图中的分隔线
-    style api模块 fill:#fff,stroke:#333,stroke-width:2px
     style core模块 fill:#fff,stroke:#333,stroke-width:2px
+    style api模块 fill:#fff,stroke:#333,stroke-width:2px
     style app模块 fill:#fff,stroke:#333,stroke-width:2px
     style 复合体系 stroke-dasharray: 5 5
 ```
@@ -166,11 +166,12 @@ Optional<Path> result = finders.executeFirst(
 
 | 组件               | 职责             | 说明                                                         |
 | ------------------ | ---------------- | ------------------------------------------------------------ |
-| ComponentRegistry  | 组件注册与查询   | 管理所有 Composable 类型组件                                 |
-| PluginManager      | 插件生命周期管理 | 负责 Discover → Resolve → Load → Install → Start/Stop/Uninstall |
-| BootstrapConfig    | 应用层装配       | 按核心组件大类配置启用策略与优先级                           |
-| Composite          | 多实现聚合接口   | 统一规范多实现组件的组合行为                                 |
-| GenericComposite   | 通用组合器实现   | 适用于所有 Composable 类型的通用组合实现                     |
+| ComponentRegistry  | 组件注册与查询   | 管理所有 Composable 类型组件（位于 core 模块）               |
+| PluginManager      | 插件生命周期管理 | 负责 Discover → Resolve → Load → Install → Start/Stop/Uninstall（位于 core 模块） |
+| BootstrapConfig    | 应用层装配       | 按核心组件大类配置启用策略与优先级（位于 app 模块）          |
+| Composite          | 多实现聚合接口   | 统一规范多实现组件的组合行为（位于 core 模块）               |
+| GenericComposite   | 通用组合器实现   | 适用于所有 Composable 类型的通用组合实现（位于 core 模块）   |
+| ExtensionRegistry  | 扩展注册中心接口 | 定义扩展点注册契约（位于 api 模块）                          |
 
 ### 3.1 PluginManager 设计
 

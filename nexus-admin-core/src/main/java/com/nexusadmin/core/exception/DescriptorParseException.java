@@ -1,4 +1,4 @@
-package com.nexusadmin.api.exception;
+package com.nexusadmin.core.exception;
 
 /**
  * 插件描述文件解析异常。

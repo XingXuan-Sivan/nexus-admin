@@ -1,6 +1,6 @@
 package com.nexusadmin.core.extension;
 
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Objects;
 
@@ -9,8 +9,6 @@ import java.util.Objects;
  * <p>封装扩展实现实例及其元信息，用于统一管理和排序。</p>
  *
  * @param <T> 扩展点类型
- * @author NexusAdmin
- * @since 1.0.0
  */
 public final class ExtensionWrapper<T extends ExtensionPoint> implements Comparable<ExtensionWrapper<?>> {
 

@@ -1,7 +1,7 @@
 package com.nexusadmin.api.extension.storage;
 
 import com.nexusadmin.api.context.CoreContext;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -10,9 +10,6 @@ import java.util.Optional;
 
 /**
  * 存储扩展点，用于统一对底层对象存储或文件存储的读写删除操作。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface StorageProvider extends ExtensionPoint {
 

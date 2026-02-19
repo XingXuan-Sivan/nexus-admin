@@ -1,8 +1,5 @@
 package com.nexusadmin.core.extension;
 
-import com.nexusadmin.api.extension.ExtensionPoint;
-import com.nexusadmin.api.extension.ExtensionRegistry;
-
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -12,9 +9,6 @@ import java.util.stream.Collectors;
 /**
  * 默认的扩展注册中心实现。
  * <p>基于线程安全的并发集合实现，支持优先级排序和插件级生命周期管理。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public class DefaultExtensionRegistry implements ExtensionRegistry {
 

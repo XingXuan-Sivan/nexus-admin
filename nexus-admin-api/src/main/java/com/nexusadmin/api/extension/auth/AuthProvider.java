@@ -1,7 +1,7 @@
 package com.nexusadmin.api.extension.auth;
 
 import com.nexusadmin.api.context.CoreContext;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,9 +9,6 @@ import java.util.Map;
 
 /**
  * 认证扩展点，用于根据凭证对主体进行身份认证，并返回认证结果。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface AuthProvider extends ExtensionPoint {
 

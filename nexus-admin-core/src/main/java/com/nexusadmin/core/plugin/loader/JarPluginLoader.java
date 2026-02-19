@@ -1,9 +1,9 @@
 package com.nexusadmin.core.plugin.loader;
 
-import com.nexusadmin.api.Plugin;
-import com.nexusadmin.api.PluginDescriptor;
-import com.nexusadmin.api.extension.ExtensionRegistry;
-import com.nexusadmin.api.exception.PluginLoadException;
+import com.nexusadmin.core.plugin.Plugin;
+import com.nexusadmin.core.plugin.PluginDescriptor;
+import com.nexusadmin.core.extension.ExtensionRegistry;
+import com.nexusadmin.core.exception.PluginLoadException;
 
 import java.io.IOException;
 import java.net.URL;
@@ -17,9 +17,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 /**
  * JAR 插件加载器，负责从指定路径（JAR 文件或目录）加载插件并构建 {@link LoadedPlugin} 对象。
  * <p>针对开发环境进行了优化：如果给定路径是一个目录且包含 Maven 编译输出目录（target/classes），则自动使用该目录作为类路径。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public class JarPluginLoader implements PluginLoader {
 

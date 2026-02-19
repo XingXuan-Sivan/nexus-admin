@@ -1,7 +1,7 @@
 package com.nexusadmin.core.extension.finder;
 
-import com.nexusadmin.api.extension.Extension;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.Extension;
+import com.nexusadmin.core.extension.ExtensionPoint;
 import com.nexusadmin.core.extension.ExtensionMetadata;
 import com.nexusadmin.core.extension.ExtensionWrapper;
 import com.nexusadmin.core.extension.storage.ExtensionStorage;
@@ -12,9 +12,6 @@ import java.util.*;
  * 组合扩展发现器实现。
  * <p>组合多个 {@link ExtensionStorage} 实现，从不同来源发现扩展实现。</p>
  * <p>支持自动推断扩展点类型、优先级排序、启用状态过滤。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public class CompositeExtensionFinder implements ExtensionFinder {
 

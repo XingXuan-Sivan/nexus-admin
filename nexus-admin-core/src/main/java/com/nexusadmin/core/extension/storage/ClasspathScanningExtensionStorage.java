@@ -1,7 +1,7 @@
 package com.nexusadmin.core.extension.storage;
 
-import com.nexusadmin.api.extension.Extension;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.Extension;
+import com.nexusadmin.core.extension.ExtensionPoint;
 import com.nexusadmin.core.extension.ExtensionMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,9 +19,6 @@ import java.util.stream.Collectors;
  * 基于类路径扫描的扩展存储实现。
  * <p>通过扫描类路径下的所有类，查找标记了 {@link Extension} 注解且实现了 {@link ExtensionPoint} 接口的类。</p>
  * <p>该实现不需要编译期生成索引文件，在运行期动态发现扩展实现。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public class ClasspathScanningExtensionStorage implements ExtensionStorage {
 

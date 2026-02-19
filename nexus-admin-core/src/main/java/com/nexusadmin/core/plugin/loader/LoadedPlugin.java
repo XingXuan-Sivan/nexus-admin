@@ -1,18 +1,15 @@
 package com.nexusadmin.core.plugin.loader;
 
-import com.nexusadmin.api.extension.ExtensionRegistry;
-import com.nexusadmin.api.PluginContext;
-import com.nexusadmin.api.PluginDescriptor;
-import com.nexusadmin.api.Plugin;
+import com.nexusadmin.core.extension.ExtensionRegistry;
+import com.nexusadmin.core.context.PluginContext;
+import com.nexusadmin.core.plugin.PluginDescriptor;
+import com.nexusadmin.core.plugin.Plugin;
 import com.nexusadmin.core.plugin.PluginState;
 
 import java.nio.file.Path;
 
 /**
  * 已加载的插件封装类，持有插件的描述信息、实例、类加载器及当前状态。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public final class LoadedPlugin {
     /**

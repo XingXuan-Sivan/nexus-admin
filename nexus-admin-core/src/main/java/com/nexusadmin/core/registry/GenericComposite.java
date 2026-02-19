@@ -25,8 +25,6 @@ import java.util.function.Function;
  * </pre>
  *
  * @param <T> 被组合的组件类型，必须继承 {@link Composable}
- * @author nexusadmin
- * @since 1.0.0
  * @see Composite
  * @see Composable
  */

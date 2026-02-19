@@ -2,7 +2,7 @@ package com.nexusadmin.api.extension.permission;
 
 import com.nexusadmin.api.context.CoreContext;
 import com.nexusadmin.api.domain.identity.Permission;
-import com.nexusadmin.api.extension.ExtensionPoint;
+import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -11,9 +11,6 @@ import java.util.Set;
 
 /**
  * 权限解析与决策扩展点，用于解析用户拥有的权限并对访问请求做出授权决策。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface PermissionResolver extends ExtensionPoint {
 

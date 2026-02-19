@@ -1,6 +1,6 @@
-package com.nexusadmin.api;
+package com.nexusadmin.core.plugin;
 
-import com.nexusadmin.api.exception.DescriptorParseException;
+import com.nexusadmin.core.exception.DescriptorParseException;
 
 import java.util.Collections;
 import java.util.HashMap;

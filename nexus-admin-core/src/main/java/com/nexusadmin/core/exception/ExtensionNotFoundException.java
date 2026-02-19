@@ -2,9 +2,6 @@ package com.nexusadmin.core.exception;
 
 /**
  * 扩展未找到异常，当从注册中心获取指定扩展点实现但未找到时抛出。
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public class ExtensionNotFoundException extends CoreException {
 

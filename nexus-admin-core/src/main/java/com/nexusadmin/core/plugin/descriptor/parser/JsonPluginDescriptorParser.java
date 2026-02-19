@@ -3,8 +3,8 @@ package com.nexusadmin.core.plugin.descriptor.parser;
 import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
 import com.eclipsesource.json.JsonValue;
-import com.nexusadmin.api.PluginDescriptor;
-import com.nexusadmin.api.exception.DescriptorParseException;
+import com.nexusadmin.core.plugin.PluginDescriptor;
+import com.nexusadmin.core.exception.DescriptorParseException;
 import com.nexusadmin.core.plugin.descriptor.PluginDescriptorParser;
 
 import java.io.IOException;

@@ -1,9 +1,9 @@
 package com.nexusadmin.plugin.system.user;
 
 
-import com.nexusadmin.api.Plugin;
-import com.nexusadmin.api.PluginContext;
-import com.nexusadmin.api.PluginDescriptor;
+import com.nexusadmin.core.plugin.Plugin;
+import com.nexusadmin.core.context.PluginContext;
+import com.nexusadmin.core.plugin.PluginDescriptor;
 
 /**
  * 系统用户插件入口，负责在插件启动与停止时完成 SPI 注册与资源管理。

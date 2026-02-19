@@ -1,4 +1,4 @@
-package com.nexusadmin.api.extension;
+package com.nexusadmin.core.extension;
 
 import java.lang.annotation.*;
 
@@ -7,8 +7,6 @@ import java.lang.annotation.*;
  * <p>用于标记扩展点实现类，支持自动发现、优先级配置、扩展点推断。</p>
  * <p>被标记的类会在编译期被扫描并生成索引，运行期通过 {@link ExtensionPoint} 体系自动发现。</p>
  *
- * @author NexusAdmin
- * @since 1.0.0
  * @see ExtensionPoint
  */
 @Retention(RetentionPolicy.RUNTIME)

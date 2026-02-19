@@ -9,9 +9,6 @@ import java.util.List;
  * <p>负责从指定类加载器中读取扩展索引，返回扩展实现类元数据列表。</p>
  * <p>该接口支持多实现、可配置、可组合，允许从不同来源（如 META-INF/extensions.idx、
  * META-INF/services 等）加载扩展信息。</p>
- *
- * @author NexusAdmin
- * @since 1.0.0
  */
 public interface ExtensionStorage {
 
