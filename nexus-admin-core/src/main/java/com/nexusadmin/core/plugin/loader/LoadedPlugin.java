@@ -1,6 +1,6 @@
 package com.nexusadmin.core.plugin.loader;
 
-import com.nexusadmin.api.SpiRegistry;
+import com.nexusadmin.api.extension.ExtensionRegistry;
 import com.nexusadmin.api.PluginContext;
 import com.nexusadmin.api.PluginDescriptor;
 import com.nexusadmin.api.Plugin;
@@ -10,6 +10,9 @@ import java.nio.file.Path;
 
 /**
  * 已加载的插件封装类，持有插件的描述信息、实例、类加载器及当前状态。
+ *
+ * @author NexusAdmin
+ * @since 1.0.0
  */
 public final class LoadedPlugin {
     /**
@@ -17,7 +20,7 @@ public final class LoadedPlugin {
      */
     private final PluginDescriptor descriptor;
     /**
-     * 插件实例，可能为 null（如果插件仅提供 SPI 实现而无入口类）。
+     * 插件实例，可能为 null（如果插件仅提供扩展点实现而无入口类）。
      */
     private final Plugin plugin;
     /**
@@ -109,10 +112,10 @@ public final class LoadedPlugin {
     /**
      * 为该插件创建运行上下文。
      *
-     * @param registry 全局 SPI 注册中心
+     * @param registry 全局扩展注册中心
      * @return 插件上下文实例
      */
-    public PluginContext createContext(SpiRegistry registry) {
+    public PluginContext createContext(ExtensionRegistry registry) {
         return new PluginContext(descriptor, registry, classLoader, pluginPath);
     }
 }

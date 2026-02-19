@@ -2,11 +2,17 @@ package com.nexusadmin.api;
 
 /**
  * 插件生命周期接口，所有可被平台加载的插件都需要实现该接口。
- * <p>通过 {@link #start(PluginContext)} 和 {@link #stop(PluginContext)} 方法完成 SPI 注册与资源管理。</p>
+ * <p>通过 {@link #start(PluginContext)} 和 {@link #stop(PluginContext)} 方法完成扩展点注册与资源管理。</p>
+ *
+ * @author NexusAdmin
+ * @since 1.0.0
  */
 public interface Plugin {
+
     /**
-     * 返回插件自身的描述信息，通常与插件打包时的 plugin.yml 一一对应。
+     * 返回插件自身的描述信息，通常与插件打包时的 plugin.json 一一对应。
+     *
+     * @return 插件描述
      */
     PluginDescriptor descriptor();
 
@@ -20,14 +26,14 @@ public interface Plugin {
     }
 
     /**
-     * 插件启动入口，在此方法中可以通过 {@link PluginContext#spiRegistry()} 注册各类 SPI 实现。
+     * 插件启动入口，在此方法中可以通过 {@link PluginContext#extensionRegistry()} 注册各类扩展点实现。
      *
-     * @param context 插件运行上下文，包含描述信息、SPI 注册中心、类加载器等
+     * @param context 插件运行上下文，包含描述信息、扩展注册中心、类加载器等
      */
     void start(PluginContext context);
 
     /**
-     * 插件停止时调用的回调方法，用于释放资源或从 SPI 注册中心注销实现。
+     * 插件停止时调用的回调方法，用于释放资源或从扩展注册中心注销实现。
      *
      * @param context 插件运行上下文
      */

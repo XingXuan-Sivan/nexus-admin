@@ -70,7 +70,7 @@ public interface Composable {
 
 - PluginDescriptorParser
 - PluginDescriptorReader
-- PluginDescriptorPathResolver
+- PluginDescriptorFinder
 - PluginLoader
 - PluginLifecycleListener
 - PluginSource
@@ -134,16 +134,16 @@ Composite 统一规范多实现组件的组合行为，可嵌套组合。
 
 ```java
 // 创建带优先级排序的组合器
-GenericComposite<PluginDescriptorPathResolver> pathResolvers = 
-    new GenericComposite<>(PluginDescriptorPathResolver::priority);
+GenericComposite<PluginDescriptorFinder> finders = 
+    new GenericComposite<>(PluginDescriptorFinder::priority);
 
-pathResolvers.addMember(new PackedDirectoryResolver());
-pathResolvers.addMember(new DevDirectoryResolver());
-pathResolvers.addMember(new JarResolver());
+finders.addMember(new PackedDirectoryResolver());
+finders.addMember(new DevDirectoryResolver());
+finders.addMember(new JarResolver());
 
-// 执行第一个成功的解析器
-Optional<Path> result = pathResolvers.executeFirst(
-    resolver -> resolver.resolve(pluginPath)
+// 执行第一个成功的查找器
+Optional<Path> result = finders.executeFirst(
+    finder -> finder.find(pluginPath)
 );
 ```
 
@@ -248,25 +248,25 @@ public ComponentRegistry<Composable> descriptorComponents(
         ComponentRegistry<Composable> registry) {
 
     // 创建组合器
-    GenericComposite<PluginDescriptorPathResolver> pathResolvers =
-            new GenericComposite<>(PluginDescriptorPathResolver::priority);
+    GenericComposite<PluginDescriptorFinder> finders =
+            new GenericComposite<>(PluginDescriptorFinder::priority);
 
     // 添加成员
-    pathResolvers.addMember(new PackedDirectoryResolver());
-    pathResolvers.addMember(new DevDirectoryResolver());
-    pathResolvers.addMember(new JarResolver());
+    finders.addMember(new PackedDirectoryResolver());
+    finders.addMember(new DevDirectoryResolver());
+    finders.addMember(new JarResolver());
 
     // 使用组合器创建包装实现
-    PluginDescriptorPathResolver resolver = new PluginDescriptorPathResolver() {
+    PluginDescriptorFinder finder = new PluginDescriptorFinder() {
         @Override
-        public Optional<Path> resolve(Path pluginPath) {
-            return pathResolvers.executeFirst(r -> r.resolve(pluginPath));
+        public Optional<Path> find(Path pluginPath) {
+            return finders.executeFirst(f -> f.find(pluginPath));
         }
 
         @Override
         public int priority() {
-            return pathResolvers.getMembers().stream()
-                    .mapToInt(PluginDescriptorPathResolver::priority)
+            return finders.getMembers().stream()
+                    .mapToInt(PluginDescriptorFinder::priority)
                     .max()
                     .orElse(0);
         }
@@ -336,33 +336,33 @@ public class BootstrapConfig {
             ComponentRegistry<Composable> registry,
             PlatformProperties properties) {
 
-        // 1. 配置路径解析器（使用 GenericComposite 组合多个解析器）
-        GenericComposite<PluginDescriptorPathResolver> pathResolverComposite =
-                new GenericComposite<>(PluginDescriptorPathResolver::priority);
+        // 1. 配置描述文件查找器（使用 GenericComposite 组合多个查找器）
+        GenericComposite<PluginDescriptorFinder> finderComposite =
+                new GenericComposite<>(PluginDescriptorFinder::priority);
 
-        pathResolverComposite.addMember(new PackedDirectoryResolver());
-        pathResolverComposite.addMember(new DevDirectoryResolver());
-        pathResolverComposite.addMember(new JarResolver());
+        finderComposite.addMember(new PackedDirectoryResolver());
+        finderComposite.addMember(new DevDirectoryResolver());
+        finderComposite.addMember(new JarResolver());
 
-        // 2. 配置描述文件读取器（使用 GenericComposite 作为路径解析器）
-        // 创建一个实现了 PluginDescriptorPathResolver 的包装类
-        PluginDescriptorPathResolver pathResolverWrapper = new PluginDescriptorPathResolver() {
+        // 2. 配置描述文件读取器（使用 GenericComposite 作为描述文件查找器）
+        // 创建一个实现了 PluginDescriptorFinder 的包装类
+        PluginDescriptorFinder finderWrapper = new PluginDescriptorFinder() {
             @Override
-            public Optional<Path> resolve(Path pluginPath) {
-                return pathResolverComposite.executeFirst(r -> r.resolve(pluginPath));
+            public Optional<Path> find(Path pluginPath) {
+                return finderComposite.executeFirst(f -> f.find(pluginPath));
             }
 
             @Override
             public int priority() {
-                return pathResolverComposite.getMembers().stream()
-                        .mapToInt(PluginDescriptorPathResolver::priority)
+                return finderComposite.getMembers().stream()
+                        .mapToInt(PluginDescriptorFinder::priority)
                         .max()
                         .orElse(0);
             }
         };
 
         JsonPluginDescriptorParser parser = new JsonPluginDescriptorParser();
-        JsonDescriptorReader reader = new JsonDescriptorReader(parser, pathResolverWrapper);
+        JsonDescriptorReader reader = new JsonDescriptorReader(parser, finderWrapper);
 
         registry.register(PluginDescriptorReader.class, reader, 0);
     }

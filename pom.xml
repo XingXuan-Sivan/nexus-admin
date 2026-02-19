@@ -10,9 +10,9 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>nexus-admin-core</module>
         <module>nexus-admin-plugin</module>
         <module>nexus-admin-api</module>
+        <module>nexus-admin-core</module>
         <module>nexus-admin-app</module>
         <module>plugins</module>
     </modules>

@@ -2,7 +2,7 @@ package com.nexusadmin.core.plugin;
 
 import com.nexusadmin.api.Plugin;
 import com.nexusadmin.api.PluginContext;
-import com.nexusadmin.api.SpiRegistry;
+import com.nexusadmin.api.extension.ExtensionRegistry;
 import com.nexusadmin.api.exception.PluginLoadException;
 import com.nexusadmin.core.plugin.event.PluginLifecycleEvent;
 import com.nexusadmin.core.plugin.event.PluginLifecycleListener;
@@ -26,13 +26,16 @@ import java.util.stream.Collectors;
  *   <li>本类只负责插件生命周期管理（Discover → Resolve → Load → Install → Start/Stop/Uninstall）</li>
  *   <li>所有组件（Source、Loader、Listener）的注册交由 ComponentRegistry 统一管理</li>
  *   <li>通过构造函数注入所需组件，不再提供注册方法</li>
+ *   <li>插件卸载时自动清理该插件注册的所有扩展点实现</li>
  * </ul>
  *
+ * @author NexusAdmin
+ * @since 1.0.0
  * @see com.nexusadmin.core.registry.ComponentRegistry
  */
 public class PluginManager {
 
-    private final SpiRegistry spiRegistry;
+    private final ExtensionRegistry extensionRegistry;
     private final List<PluginSource> sources;
     private final List<PluginLoader> loaders;
     private final List<PluginLifecycleListener> listeners;
@@ -42,24 +45,20 @@ public class PluginManager {
     /**
      * 构造函数：所有依赖通过参数注入。
      *
-     * @param spiRegistry SPI 注册中心
-     * @param sources     插件源列表（由 ComponentRegistry 提供）
-     * @param loaders     插件加载器列表（由 ComponentRegistry 提供）
-     * @param listeners   生命周期监听器列表（由 ComponentRegistry 提供）
+     * @param extensionRegistry 扩展注册中心
+     * @param sources           插件源列表（由 ComponentRegistry 提供）
+     * @param loaders           插件加载器列表（由 ComponentRegistry 提供）
+     * @param listeners         生命周期监听器列表（由 ComponentRegistry 提供）
      */
-    public PluginManager(SpiRegistry spiRegistry,
+    public PluginManager(ExtensionRegistry extensionRegistry,
                          List<PluginSource> sources,
                          List<PluginLoader> loaders,
                          List<PluginLifecycleListener> listeners) {
-        this.spiRegistry = Objects.requireNonNull(spiRegistry, "spiRegistry must not be null");
+        this.extensionRegistry = Objects.requireNonNull(extensionRegistry, "扩展注册中心不能为空");
         this.sources = List.copyOf(sources != null ? sources : List.of());
         this.loaders = List.copyOf(loaders != null ? loaders : List.of());
         this.listeners = List.copyOf(listeners != null ? listeners : List.of());
     }
-
-    // ==================== 注册扩展（已移除）====================
-    // 原 registerSource/registerLoader/addLifecycleListener 方法已删除
-    // 组件注册统一由 ComponentRegistry 处理
 
     // ==================== 第一阶段：Discover ====================
 
@@ -159,11 +158,11 @@ public class PluginManager {
                 .orElseThrow(() -> new PluginLoadException("无可用加载器: " + candidate.pluginId()));
 
         // 加载
-        LoadedPlugin loaded = loader.load(candidate, spiRegistry);
+        LoadedPlugin loaded = loader.load(candidate, extensionRegistry);
 
         // 安装（调用插件 install 回调）
         if (loaded.plugin() != null) {
-            loaded.plugin().install(loaded.createContext(spiRegistry));
+            loaded.plugin().install(loaded.createContext(extensionRegistry));
         }
 
         loaded.state(PluginState.INSTALLED);
@@ -211,7 +210,7 @@ public class PluginManager {
 
         fireEvent(PluginLifecycleEvent.starting(loaded));
 
-        PluginContext context = loaded.createContext(spiRegistry);
+        PluginContext context = loaded.createContext(extensionRegistry);
         try {
             plugin.start(context);
             loaded.state(PluginState.STARTED);
@@ -244,7 +243,7 @@ public class PluginManager {
             return;
         }
 
-        PluginContext context = loaded.createContext(spiRegistry);
+        PluginContext context = loaded.createContext(extensionRegistry);
         try {
             plugin.stop(context);
             loaded.state(PluginState.STOPPED);
@@ -278,7 +277,7 @@ public class PluginManager {
         // 2. 调用插件的 uninstall 生命周期方法
         Plugin plugin = loaded.plugin();
         if (plugin != null) {
-            PluginContext context = loaded.createContext(spiRegistry);
+            PluginContext context = loaded.createContext(extensionRegistry);
             try {
                 plugin.uninstall(context);
             } catch (Exception ignored) {
@@ -286,10 +285,13 @@ public class PluginManager {
             }
         }
 
-        // 3. 释放 JVM 资源
+        // 3. 从扩展注册中心清理该插件注册的所有扩展
+        extensionRegistry.unregisterByPluginId(pluginId);
+
+        // 4. 释放 JVM 资源
         closeIfPossible(loaded.classLoader());
 
-        // 4. 执行物理卸载（删除文件）
+        // 5. 执行物理卸载（删除文件）
         PluginLoader loader = pluginLoaders.remove(pluginId);
         if (loader != null && loader.supportsRemove()) {
             loader.remove(loaded);

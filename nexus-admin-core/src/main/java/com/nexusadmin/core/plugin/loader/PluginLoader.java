@@ -1,12 +1,15 @@
 package com.nexusadmin.core.plugin.loader;
 
-import com.nexusadmin.api.SpiRegistry;
+import com.nexusadmin.api.extension.ExtensionRegistry;
 import com.nexusadmin.core.registry.Composable;
 
 /**
  * 插件加载器，负责将候选插件加载为可运行状态。
  * <p>专注类加载和实例化，不参与发现阶段。</p>
  * <p>实现 {@link Composable} 以支持注册中心统一管理。</p>
+ *
+ * @author NexusAdmin
+ * @since 1.0.0
  */
 public interface PluginLoader extends Composable {
 
@@ -22,10 +25,10 @@ public interface PluginLoader extends Composable {
      * 加载候选插件，返回已加载插件对象。
      *
      * @param candidate 候选插件
-     * @param registry  SPI 注册中心
+     * @param registry  扩展注册中心
      * @return 已加载插件
      */
-    LoadedPlugin load(CandidatePlugin candidate, SpiRegistry registry);
+    LoadedPlugin load(CandidatePlugin candidate, ExtensionRegistry registry);
 
     /**
      * 是否支持物理卸载。

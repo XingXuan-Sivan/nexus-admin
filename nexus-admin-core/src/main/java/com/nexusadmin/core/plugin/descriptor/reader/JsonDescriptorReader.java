@@ -4,7 +4,7 @@ import com.nexusadmin.api.PluginDescriptor;
 import com.nexusadmin.api.exception.DescriptorParseException;
 import com.nexusadmin.core.plugin.descriptor.PluginDescriptorParser;
 import com.nexusadmin.core.plugin.descriptor.PluginDescriptorReader;
-import com.nexusadmin.core.plugin.descriptor.PluginDescriptorPathResolver;
+import com.nexusadmin.core.plugin.descriptor.PluginDescriptorFinder;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,18 +23,18 @@ import static com.nexusadmin.core.plugin.descriptor.PluginDescriptorKeys.DESCRIP
 public class JsonDescriptorReader implements PluginDescriptorReader {
 
     private final PluginDescriptorParser<InputStream> parser;
-    private final PluginDescriptorPathResolver pathResolver;
+    private final PluginDescriptorFinder finder;
 
     /**
      * 构造函数。
      *
-     * @param parser        描述文件解析器
-     * @param pathResolver  路径解析器（通常是组合解析器）
+     * @param parser  描述文件解析器
+     * @param finder  描述文件查找器（通常是组合查找器）
      */
     public JsonDescriptorReader(PluginDescriptorParser<InputStream> parser,
-                                PluginDescriptorPathResolver pathResolver) {
+                                PluginDescriptorFinder finder) {
         this.parser = parser;
-        this.pathResolver = pathResolver;
+        this.finder = finder;
     }
 
     @Override
@@ -52,7 +52,7 @@ public class JsonDescriptorReader implements PluginDescriptorReader {
     }
 
     private PluginDescriptor readFromDirectory(Path dir) {
-        Optional<Path> descriptorPath = pathResolver.resolve(dir);
+        Optional<Path> descriptorPath = finder.find(dir);
         if (descriptorPath.isEmpty()) {
             throw new DescriptorParseException("在目录中未找到插件描述文件: " + dir);
         }
