@@ -196,7 +196,6 @@ public class ExtensionAnnotationProcessor extends AbstractProcessor {
             try (Writer writer = fileObject.openWriter()) {
                 writer.write("# 扩展索引文件\n");
                 writer.write("# 由 ExtensionAnnotationProcessor 自动生成，请勿手动修改\n");
-                writer.write("# 生成时间: " + new Date() + "\n\n");
 
                 // 按类名排序，保证输出稳定
                 List<String> sortedClasses = new ArrayList<>(extensionClasses);
