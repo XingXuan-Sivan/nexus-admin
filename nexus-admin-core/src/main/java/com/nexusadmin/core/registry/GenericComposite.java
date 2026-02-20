@@ -18,7 +18,7 @@ import java.util.function.Function;
  * loaderComposite.addMember(classpathLoader);
  * 
  * // 执行第一个支持的成员
- * Optional&lt;LoadedPlugin&gt; result = loaderComposite.executeFirstSupported(
+ * Optional&lt;PluginWapper&gt; result = loaderComposite.executeFirstSupported(
  *     loader -&gt; loader.supports(candidate),
  *     loader -&gt; loader.load(candidate, registry)
  * );

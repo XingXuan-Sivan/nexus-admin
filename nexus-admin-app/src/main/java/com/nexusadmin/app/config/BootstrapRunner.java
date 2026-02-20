@@ -2,8 +2,8 @@ package com.nexusadmin.app.config;
 
 import com.nexusadmin.app.config.properties.PlatformProperties;
 import com.nexusadmin.core.plugin.PluginState;
-import com.nexusadmin.core.plugin.loader.CandidatePlugin;
-import com.nexusadmin.core.plugin.loader.LoadedPlugin;
+import com.nexusadmin.core.plugin.loader.PluginMetadata;
+import com.nexusadmin.core.plugin.loader.PluginWapper;
 import com.nexusadmin.core.plugin.PluginManager;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -31,10 +31,10 @@ public class BootstrapRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         // 1. Discover 阶段
-        List<CandidatePlugin> candidates = pluginManager.discover();
+        List<PluginMetadata> candidates = pluginManager.discover();
 
         // 2. Resolve 阶段
-        List<CandidatePlugin> resolved = pluginManager.resolve(candidates);
+        List<PluginMetadata> resolved = pluginManager.resolve(candidates);
 
         // 3. Install 阶段
         pluginManager.install(resolved);
@@ -46,7 +46,7 @@ public class BootstrapRunner implements ApplicationRunner {
     }
 
     private void autoStartPlugins() {
-        for (LoadedPlugin loaded : pluginManager.list()) {
+        for (PluginWapper loaded : pluginManager.list()) {
             if (loaded.descriptor().hasEntryPoint() && loaded.state() == PluginState.INSTALLED) {
                 try {
                     pluginManager.start(loaded.descriptor().id());

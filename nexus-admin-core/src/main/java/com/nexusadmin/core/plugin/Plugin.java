@@ -1,6 +1,7 @@
 package com.nexusadmin.core.plugin;
 
 import com.nexusadmin.core.context.PluginContext;
+import com.nexusadmin.core.plugin.descriptor.PluginDescriptor;
 
 /**
  * 插件生命周期接口，所有可被平台加载的插件都需要实现该接口。

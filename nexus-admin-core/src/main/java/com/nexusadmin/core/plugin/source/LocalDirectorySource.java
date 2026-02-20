@@ -1,9 +1,9 @@
 package com.nexusadmin.core.plugin.source;
 
-import com.nexusadmin.core.plugin.PluginDescriptor;
+import com.nexusadmin.core.plugin.descriptor.PluginDescriptor;
 import com.nexusadmin.core.exception.PluginSourceException;
 import com.nexusadmin.core.plugin.descriptor.PluginDescriptorReader;
-import com.nexusadmin.core.plugin.loader.CandidatePlugin;
+import com.nexusadmin.core.plugin.loader.PluginMetadata;
 import com.nexusadmin.core.plugin.loader.SourceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,8 +36,8 @@ public class LocalDirectorySource implements PluginSource {
     }
 
     @Override
-    public List<CandidatePlugin> scan() {
-        List<CandidatePlugin> candidates = new ArrayList<>();
+    public List<PluginMetadata> scan() {
+        List<PluginMetadata> candidates = new ArrayList<>();
 
         if (!Files.exists(rootPath)) {
             log.debug("插件目录不存在，跳过扫描: {}", rootPath);
@@ -59,10 +59,10 @@ public class LocalDirectorySource implements PluginSource {
         return candidates;
     }
 
-    private void scanPath(Path path, List<CandidatePlugin> candidates) {
+    private void scanPath(Path path, List<PluginMetadata> candidates) {
         try {
             PluginDescriptor descriptor = descriptorReader.read(path);
-            CandidatePlugin candidate = new CandidatePlugin(
+            PluginMetadata candidate = new PluginMetadata(
                     descriptor.id(),
                     descriptor,
                     path,

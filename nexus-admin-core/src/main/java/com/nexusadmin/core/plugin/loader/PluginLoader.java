@@ -16,7 +16,7 @@ public interface PluginLoader extends Composable {
      * @param candidate 候选插件
      * @return 如果支持则返回 true
      */
-    boolean supports(CandidatePlugin candidate);
+    boolean supports(PluginMetadata candidate);
 
     /**
      * 加载候选插件，返回已加载插件对象。
@@ -25,7 +25,7 @@ public interface PluginLoader extends Composable {
      * @param registry  扩展注册中心
      * @return 已加载插件
      */
-    LoadedPlugin load(CandidatePlugin candidate, ExtensionRegistry registry);
+    PluginWapper load(PluginMetadata candidate, ExtensionRegistry registry);
 
     /**
      * 是否支持物理卸载。
@@ -42,7 +42,7 @@ public interface PluginLoader extends Composable {
      *
      * @param plugin 已加载插件
      */
-    default void remove(LoadedPlugin plugin) {
+    default void remove(PluginWapper plugin) {
         throw new UnsupportedOperationException("不支持物理卸载");
     }
 }

@@ -1,7 +1,7 @@
 package com.nexusadmin.core.context;
 
 import com.nexusadmin.core.extension.ExtensionRegistry;
-import com.nexusadmin.core.plugin.PluginDescriptor;
+import com.nexusadmin.core.plugin.descriptor.PluginDescriptor;
 
 import java.nio.file.Path;
 

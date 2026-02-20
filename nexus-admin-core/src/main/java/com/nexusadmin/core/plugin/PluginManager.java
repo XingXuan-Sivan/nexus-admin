@@ -5,8 +5,8 @@ import com.nexusadmin.core.extension.ExtensionRegistry;
 import com.nexusadmin.core.exception.PluginLoadException;
 import com.nexusadmin.core.plugin.event.PluginLifecycleEvent;
 import com.nexusadmin.core.plugin.event.PluginLifecycleListener;
-import com.nexusadmin.core.plugin.loader.CandidatePlugin;
-import com.nexusadmin.core.plugin.loader.LoadedPlugin;
+import com.nexusadmin.core.plugin.loader.PluginMetadata;
+import com.nexusadmin.core.plugin.loader.PluginWapper;
 import com.nexusadmin.core.plugin.loader.PluginLoader;
 import com.nexusadmin.core.plugin.loader.SourceType;
 import com.nexusadmin.core.plugin.source.PluginSource;
@@ -34,7 +34,7 @@ public class PluginManager {
     private final List<PluginSource> sources;
     private final List<PluginLoader> loaders;
     private final List<PluginLifecycleListener> listeners;
-    private final Map<String, LoadedPlugin> plugins = new ConcurrentHashMap<>();
+    private final Map<String, PluginWapper> plugins = new ConcurrentHashMap<>();
     private final Map<String, PluginLoader> pluginLoaders = new ConcurrentHashMap<>();
 
     /**
@@ -62,10 +62,10 @@ public class PluginManager {
      *
      * @return 候选插件列表
      */
-    public List<CandidatePlugin> discover() {
+    public List<PluginMetadata> discover() {
         fireEvent(PluginLifecycleEvent.discoverStart());
 
-        List<CandidatePlugin> candidates = sources.stream()
+        List<PluginMetadata> candidates = sources.stream()
                 .flatMap(s -> s.scan().stream())
                 .peek(c -> fireEvent(PluginLifecycleEvent.discovered(c)))
                 .collect(Collectors.toList());
@@ -82,17 +82,17 @@ public class PluginManager {
      * @param candidates 候选插件列表
      * @return 经过裁决后的有效插件列表
      */
-    public List<CandidatePlugin> resolve(List<CandidatePlugin> candidates) {
+    public List<PluginMetadata> resolve(List<PluginMetadata> candidates) {
         if (candidates == null || candidates.isEmpty()) {
             return List.of();
         }
 
         fireEvent(PluginLifecycleEvent.resolveStart(candidates.size()));
 
-        Map<String, List<CandidatePlugin>> grouped = candidates.stream()
-                .collect(Collectors.groupingBy(CandidatePlugin::pluginId));
+        Map<String, List<PluginMetadata>> grouped = candidates.stream()
+                .collect(Collectors.groupingBy(PluginMetadata::pluginId));
 
-        List<CandidatePlugin> resolved = grouped.values().stream()
+        List<PluginMetadata> resolved = grouped.values().stream()
                 .map(this::selectBest)
                 .peek(c -> fireEvent(PluginLifecycleEvent.resolved(c)))
                 .collect(Collectors.toList());
@@ -101,10 +101,10 @@ public class PluginManager {
         return resolved;
     }
 
-    private CandidatePlugin selectBest(List<CandidatePlugin> list) {
+    private PluginMetadata selectBest(List<PluginMetadata> list) {
         return list.stream()
                 .max(Comparator
-                        .comparing((CandidatePlugin c) -> score(c.sourceType()))
+                        .comparing((PluginMetadata c) -> score(c.sourceType()))
                         .thenComparing(c -> c.descriptor().version()))
                 .orElseThrow();
     }
@@ -125,17 +125,17 @@ public class PluginManager {
      *
      * @param candidates 经过解析的候选插件列表
      */
-    public void install(List<CandidatePlugin> candidates) {
+    public void install(List<PluginMetadata> candidates) {
         fireEvent(PluginLifecycleEvent.installStart(candidates.size()));
 
-        for (CandidatePlugin candidate : candidates) {
+        for (PluginMetadata candidate : candidates) {
             if (plugins.containsKey(candidate.pluginId())) {
                 fireEvent(PluginLifecycleEvent.skipped(candidate, "已存在"));
                 continue;
             }
 
             try {
-                LoadedPlugin loaded = doLoadAndInstall(candidate);
+                PluginWapper loaded = doLoadAndInstall(candidate);
                 fireEvent(PluginLifecycleEvent.installed(loaded));
             } catch (Exception e) {
                 fireEvent(PluginLifecycleEvent.failed(candidate, e));
@@ -145,7 +145,7 @@ public class PluginManager {
         fireEvent(PluginLifecycleEvent.installEnd(plugins.size()));
     }
 
-    private LoadedPlugin doLoadAndInstall(CandidatePlugin candidate) {
+    private PluginWapper doLoadAndInstall(PluginMetadata candidate) {
         // 选择合适的加载器
         PluginLoader loader = loaders.stream()
                 .filter(l -> l.supports(candidate))
@@ -153,7 +153,7 @@ public class PluginManager {
                 .orElseThrow(() -> new PluginLoadException("无可用加载器: " + candidate.pluginId()));
 
         // 加载
-        LoadedPlugin loaded = loader.load(candidate, extensionRegistry);
+        PluginWapper loaded = loader.load(candidate, extensionRegistry);
 
         // 安装（调用插件 install 回调）
         if (loaded.plugin() != null) {
@@ -188,7 +188,7 @@ public class PluginManager {
      * @param pluginId 插件 ID
      */
     public void start(String pluginId) {
-        LoadedPlugin loaded = require(pluginId);
+        PluginWapper loaded = require(pluginId);
 
         if (loaded.state() == PluginState.STARTED) {
             return;
@@ -223,7 +223,7 @@ public class PluginManager {
      * @param pluginId 插件 ID
      */
     public void stop(String pluginId) {
-        LoadedPlugin loaded = require(pluginId);
+        PluginWapper loaded = require(pluginId);
 
         if (loaded.state() != PluginState.STARTED) {
             return;
@@ -256,7 +256,7 @@ public class PluginManager {
      * @param pluginId 插件 ID
      */
     public void uninstall(String pluginId) {
-        LoadedPlugin loaded = require(pluginId);
+        PluginWapper loaded = require(pluginId);
 
         fireEvent(PluginLifecycleEvent.uninstalling(loaded));
 
@@ -302,9 +302,9 @@ public class PluginManager {
      * 获取指定 ID 的插件信息。
      *
      * @param pluginId 插件 ID
-     * @return 对应的 {@link LoadedPlugin}，不存在时返回 null
+     * @return 对应的 {@link PluginWapper}，不存在时返回 null
      */
-    public LoadedPlugin get(String pluginId) {
+    public PluginWapper get(String pluginId) {
         return plugins.get(pluginId);
     }
 
@@ -313,7 +313,7 @@ public class PluginManager {
      *
      * @return 已安装插件集合视图
      */
-    public Collection<LoadedPlugin> list() {
+    public Collection<PluginWapper> list() {
         return plugins.values();
     }
 
@@ -321,10 +321,10 @@ public class PluginManager {
      * 获取指定 ID 的已加载插件信息，如果不存在则抛出异常。
      *
      * @param pluginId 插件 ID
-     * @return 对应的 {@link LoadedPlugin}
+     * @return 对应的 {@link PluginWapper}
      */
-    private LoadedPlugin require(String pluginId) {
-        LoadedPlugin loaded = plugins.get(pluginId);
+    private PluginWapper require(String pluginId) {
+        PluginWapper loaded = plugins.get(pluginId);
         if (loaded == null) {
             throw new PluginLoadException("plugin not found: " + pluginId);
         }

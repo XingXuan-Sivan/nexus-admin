@@ -2,7 +2,7 @@ package com.nexusadmin.core.plugin.loader;
 
 import com.nexusadmin.core.extension.ExtensionRegistry;
 import com.nexusadmin.core.plugin.Plugin;
-import com.nexusadmin.core.plugin.PluginDescriptor;
+import com.nexusadmin.core.plugin.descriptor.PluginDescriptor;
 import com.nexusadmin.core.exception.PluginLoadException;
 
 /**
@@ -12,13 +12,13 @@ import com.nexusadmin.core.exception.PluginLoadException;
 public class ClasspathPluginLoader implements PluginLoader {
 
     @Override
-    public boolean supports(CandidatePlugin candidate) {
+    public boolean supports(PluginMetadata candidate) {
         // 只处理来自类路径的候选插件
         return candidate != null && candidate.sourceType() == SourceType.CLASSPATH;
     }
 
     @Override
-    public LoadedPlugin load(CandidatePlugin candidate, ExtensionRegistry registry) {
+    public PluginWapper load(PluginMetadata candidate, ExtensionRegistry registry) {
         PluginDescriptor descriptor = candidate.descriptor();
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
@@ -34,6 +34,6 @@ public class ClasspathPluginLoader implements PluginLoader {
             throw new PluginLoadException("加载类路径插件失败: " + descriptor.id(), e);
         }
 
-        return new LoadedPlugin(descriptor, plugin, classLoader, candidate.sourcePath());
+        return new PluginWapper(descriptor, plugin, classLoader, candidate.sourcePath());
     }
 }

@@ -1,8 +1,8 @@
 package com.nexusadmin.core.plugin.source;
 
-import com.nexusadmin.core.plugin.PluginDescriptor;
+import com.nexusadmin.core.plugin.descriptor.PluginDescriptor;
 import com.nexusadmin.core.plugin.descriptor.PluginDescriptorParser;
-import com.nexusadmin.core.plugin.loader.CandidatePlugin;
+import com.nexusadmin.core.plugin.loader.PluginMetadata;
 import com.nexusadmin.core.plugin.loader.SourceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,15 +43,15 @@ public class ClasspathPluginSource implements PluginSource {
     }
 
     @Override
-    public List<CandidatePlugin> scan() {
-        List<CandidatePlugin> candidates = new ArrayList<>();
+    public List<PluginMetadata> scan() {
+        List<PluginMetadata> candidates = new ArrayList<>();
 
         try {
             Enumeration<URL> resources = classLoader.getResources(DESCRIPTOR_PATH);
             while (resources.hasMoreElements()) {
                 URL url = resources.nextElement();
                 try {
-                    CandidatePlugin candidate = createCandidateFromUrl(url);
+                    PluginMetadata candidate = createCandidateFromUrl(url);
                     if (candidate != null) {
                         candidates.add(candidate);
                     }
@@ -66,7 +66,7 @@ public class ClasspathPluginSource implements PluginSource {
         return candidates;
     }
 
-    private CandidatePlugin createCandidateFromUrl(URL url) throws Exception {
+    private PluginMetadata createCandidateFromUrl(URL url) throws Exception {
         PluginDescriptor descriptor;
         try (InputStream is = url.openStream()) {
             descriptor = descriptorParser.parse(is);
@@ -80,6 +80,6 @@ public class ClasspathPluginSource implements PluginSource {
         }
 
         log.debug("发现类路径插件: {} (来源: {})", descriptor.id(), url);
-        return new CandidatePlugin(descriptor.id(), descriptor, path, null, SourceType.CLASSPATH);
+        return new PluginMetadata(descriptor.id(), descriptor, path, null, SourceType.CLASSPATH);
     }
 }

@@ -1,7 +1,7 @@
 package com.nexusadmin.core.plugin.event;
 
-import com.nexusadmin.core.plugin.loader.CandidatePlugin;
-import com.nexusadmin.core.plugin.loader.LoadedPlugin;
+import com.nexusadmin.core.plugin.loader.PluginMetadata;
+import com.nexusadmin.core.plugin.loader.PluginWapper;
 
 /**
  * 插件生命周期事件。
@@ -44,7 +44,7 @@ public record PluginLifecycleEvent(
                 String.format("发现候选插件数: %d", count), count);
     }
 
-    public static PluginLifecycleEvent discovered(CandidatePlugin candidate) {
+    public static PluginLifecycleEvent discovered(PluginMetadata candidate) {
         return new PluginLifecycleEvent(Type.DISCOVERED,
                 "发现插件: " + candidate.pluginId(), candidate);
     }
@@ -59,7 +59,7 @@ public record PluginLifecycleEvent(
                 String.format("解析完成，有效插件数: %d", count), count);
     }
 
-    public static PluginLifecycleEvent resolved(CandidatePlugin candidate) {
+    public static PluginLifecycleEvent resolved(PluginMetadata candidate) {
         return new PluginLifecycleEvent(Type.RESOLVED,
                 "解析通过: " + candidate.pluginId(), candidate);
     }
@@ -74,48 +74,48 @@ public record PluginLifecycleEvent(
                 String.format("安装完成，已安装插件数: %d", count), count);
     }
 
-    public static PluginLifecycleEvent installed(LoadedPlugin loaded) {
+    public static PluginLifecycleEvent installed(PluginWapper loaded) {
         return new PluginLifecycleEvent(Type.INSTALLED,
                 "插件安装成功: " + loaded.descriptor().id(), loaded);
     }
 
-    public static PluginLifecycleEvent skipped(CandidatePlugin candidate, String reason) {
+    public static PluginLifecycleEvent skipped(PluginMetadata candidate, String reason) {
         return new PluginLifecycleEvent(Type.SKIPPED,
                 String.format("跳过插件 %s: %s", candidate.pluginId(), reason), candidate);
     }
 
-    public static PluginLifecycleEvent failed(CandidatePlugin candidate, Throwable error) {
+    public static PluginLifecycleEvent failed(PluginMetadata candidate, Throwable error) {
         return new PluginLifecycleEvent(Type.FAILED,
                 String.format("插件 %s 处理失败: %s", candidate.pluginId(), error.getMessage()),
                 new FailurePayload(candidate, error));
     }
 
-    public static PluginLifecycleEvent starting(LoadedPlugin loaded) {
+    public static PluginLifecycleEvent starting(PluginWapper loaded) {
         return new PluginLifecycleEvent(Type.STARTING,
                 "正在启动插件: " + loaded.descriptor().id(), loaded);
     }
 
-    public static PluginLifecycleEvent started(LoadedPlugin loaded) {
+    public static PluginLifecycleEvent started(PluginWapper loaded) {
         return new PluginLifecycleEvent(Type.STARTED,
                 "插件已启动: " + loaded.descriptor().id(), loaded);
     }
 
-    public static PluginLifecycleEvent stopping(LoadedPlugin loaded) {
+    public static PluginLifecycleEvent stopping(PluginWapper loaded) {
         return new PluginLifecycleEvent(Type.STOPPING,
                 "正在停止插件: " + loaded.descriptor().id(), loaded);
     }
 
-    public static PluginLifecycleEvent stopped(LoadedPlugin loaded) {
+    public static PluginLifecycleEvent stopped(PluginWapper loaded) {
         return new PluginLifecycleEvent(Type.STOPPED,
                 "插件已停止: " + loaded.descriptor().id(), loaded);
     }
 
-    public static PluginLifecycleEvent uninstalling(LoadedPlugin loaded) {
+    public static PluginLifecycleEvent uninstalling(PluginWapper loaded) {
         return new PluginLifecycleEvent(Type.UNINSTALLING,
                 "正在卸载插件: " + loaded.descriptor().id(), loaded);
     }
 
-    public static PluginLifecycleEvent uninstalled(LoadedPlugin loaded) {
+    public static PluginLifecycleEvent uninstalled(PluginWapper loaded) {
         return new PluginLifecycleEvent(Type.UNINSTALLED,
                 "插件已卸载: " + loaded.descriptor().id(), loaded);
     }
@@ -123,6 +123,6 @@ public record PluginLifecycleEvent(
     /**
      * 失败事件载荷。
      */
-    public record FailurePayload(CandidatePlugin candidate, Throwable error) {
+    public record FailurePayload(PluginMetadata candidate, Throwable error) {
     }
 }

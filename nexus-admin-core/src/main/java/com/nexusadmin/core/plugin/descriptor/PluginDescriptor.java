@@ -1,4 +1,4 @@
-package com.nexusadmin.core.plugin;
+package com.nexusadmin.core.plugin.descriptor;
 
 import com.nexusadmin.core.exception.DescriptorParseException;
 

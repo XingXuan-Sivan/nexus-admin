@@ -2,7 +2,7 @@ package com.nexusadmin.core.plugin.loader;
 
 import com.nexusadmin.core.extension.ExtensionRegistry;
 import com.nexusadmin.core.context.PluginContext;
-import com.nexusadmin.core.plugin.PluginDescriptor;
+import com.nexusadmin.core.plugin.descriptor.PluginDescriptor;
 import com.nexusadmin.core.plugin.Plugin;
 import com.nexusadmin.core.plugin.PluginState;
 
@@ -11,7 +11,7 @@ import java.nio.file.Path;
 /**
  * 已加载的插件封装类，持有插件的描述信息、实例、类加载器及当前状态。
  */
-public final class LoadedPlugin {
+public final class PluginWapper {
     /**
      * 插件描述信息。
      */
@@ -41,7 +41,7 @@ public final class LoadedPlugin {
      * @param classLoader 类加载器
      * @param pluginPath  插件路径
      */
-    public LoadedPlugin(PluginDescriptor descriptor,
+    public PluginWapper(PluginDescriptor descriptor,
                         Plugin plugin,
                         ClassLoader classLoader,
                         Path pluginPath) {
