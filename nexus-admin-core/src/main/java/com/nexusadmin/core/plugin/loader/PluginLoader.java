@@ -1,14 +1,12 @@
 package com.nexusadmin.core.plugin.loader;
 
 import com.nexusadmin.core.extension.ExtensionRegistry;
-import com.nexusadmin.core.registry.Composable;
 
 /**
  * 插件加载器，负责将候选插件加载为可运行状态。
  * <p>专注类加载和实例化，不参与发现阶段。</p>
- * <p>实现 {@link Composable} 以支持注册中心统一管理。</p>
  */
-public interface PluginLoader extends Composable {
+public interface PluginLoader {
 
     /**
      * 检查是否支持加载该候选插件。
@@ -25,7 +23,7 @@ public interface PluginLoader extends Composable {
      * @param registry  扩展注册中心
      * @return 已加载插件
      */
-    PluginWapper load(PluginMetadata candidate, ExtensionRegistry registry);
+    PluginWrapper load(PluginMetadata candidate, ExtensionRegistry registry);
 
     /**
      * 是否支持物理卸载。
@@ -42,7 +40,7 @@ public interface PluginLoader extends Composable {
      *
      * @param plugin 已加载插件
      */
-    default void remove(PluginWapper plugin) {
+    default void remove(PluginWrapper plugin) {
         throw new UnsupportedOperationException("不支持物理卸载");
     }
 }

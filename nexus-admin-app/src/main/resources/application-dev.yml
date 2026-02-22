@@ -1,6 +1,11 @@
 server:
   port: 8081
 
+platform:
+  plugin:
+    # 开发环境使用开发模式
+    runtime-mode: DEVELOPMENT
+
 logging:
   level:
     root: INFO

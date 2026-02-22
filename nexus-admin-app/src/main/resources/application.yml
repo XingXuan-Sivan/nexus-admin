@@ -18,6 +18,10 @@ platform:
   plugin:
     # 插件根目录路径
     path: plugins
+    # 核心版本号
+    core-version: 1.0.0
+    # 运行模式：DEVELOPMENT、DEPLOYMENT
+    runtime-mode: DEVELOPMENT
     # 是否在加载后自动启动具有入口点的插件
     auto-start: true
 

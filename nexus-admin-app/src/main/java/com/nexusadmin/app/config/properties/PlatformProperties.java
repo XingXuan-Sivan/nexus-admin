@@ -1,5 +1,6 @@
 package com.nexusadmin.app.config.properties;
 
+import com.nexusadmin.core.plugin.RuntimeMode;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +18,11 @@ public class PlatformProperties {
      * 插件系统配置。
      */
     private Plugin plugin = new Plugin();
+
+//    /**
+//     * 开发模式标志。
+//     */
+//    private boolean dev = false;
 
     /**
      * 获取平台基本信息配置。
@@ -135,6 +141,14 @@ public class PlatformProperties {
          */
         private String path = "plugins";
         /**
+         * 插件核心版本号。
+         */
+        private String coreVersion = "1.0.0";
+        /**
+         * 运行模式，可选值：DEVELOPMENT、DEPLOYMENT。
+         */
+        private RuntimeMode runtimeMode = RuntimeMode.DEVELOPMENT;
+        /**
          * 是否在加载后自动启动具有入口点的插件。
          */
         private boolean autoStart = true;
@@ -155,6 +169,42 @@ public class PlatformProperties {
          */
         public void setPath(String path) {
             this.path = path;
+        }
+
+        /**
+         * 获取插件核心版本号。
+         *
+         * @return 插件核心版本号
+         */
+        public String getCoreVersion() {
+            return coreVersion;
+        }
+
+        /**
+         * 设置插件核心版本号。
+         *
+         * @param coreVersion 插件核心版本号
+         */
+        public void setCoreVersion(String coreVersion) {
+            this.coreVersion = coreVersion;
+        }
+
+        /**
+         * 获取运行模式。
+         *
+         * @return 运行模式
+         */
+        public RuntimeMode getRuntimeMode() {
+            return runtimeMode;
+        }
+
+        /**
+         * 设置运行模式。
+         *
+         * @param runtimeMode 运行模式
+         */
+        public void setRuntimeMode(RuntimeMode runtimeMode) {
+            this.runtimeMode = runtimeMode;
         }
 
         /**

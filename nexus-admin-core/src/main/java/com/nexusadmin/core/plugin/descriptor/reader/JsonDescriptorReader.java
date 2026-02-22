@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -23,18 +24,18 @@ import static com.nexusadmin.core.plugin.descriptor.PluginDescriptorKeys.DESCRIP
 public class JsonDescriptorReader implements PluginDescriptorReader {
 
     private final PluginDescriptorParser<InputStream> parser;
-    private final PluginDescriptorFinder finder;
+    private final List<PluginDescriptorFinder> finders;
 
     /**
      * 构造函数。
      *
      * @param parser  描述文件解析器
-     * @param finder  描述文件查找器（通常是组合查找器）
+     * @param finders 描述文件查找器列表
      */
     public JsonDescriptorReader(PluginDescriptorParser<InputStream> parser,
-                                PluginDescriptorFinder finder) {
+                                List<PluginDescriptorFinder> finders) {
         this.parser = parser;
-        this.finder = finder;
+        this.finders = List.copyOf(finders != null ? finders : List.of());
     }
 
     @Override
@@ -52,7 +53,14 @@ public class JsonDescriptorReader implements PluginDescriptorReader {
     }
 
     private PluginDescriptor readFromDirectory(Path dir) {
-        Optional<Path> descriptorPath = finder.find(dir);
+        // 按优先级排序查找器
+        Optional<Path> descriptorPath = finders.stream()
+                .sorted((f1, f2) -> Integer.compare(f2.priority(), f1.priority()))
+                .map(f -> f.find(dir))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst();
+
         if (descriptorPath.isEmpty()) {
             throw new DescriptorParseException("在目录中未找到插件描述文件: " + dir);
         }

@@ -18,7 +18,7 @@ public class ClasspathPluginLoader implements PluginLoader {
     }
 
     @Override
-    public PluginWapper load(PluginMetadata candidate, ExtensionRegistry registry) {
+    public PluginWrapper load(PluginMetadata candidate, ExtensionRegistry registry) {
         PluginDescriptor descriptor = candidate.descriptor();
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
@@ -34,6 +34,6 @@ public class ClasspathPluginLoader implements PluginLoader {
             throw new PluginLoadException("加载类路径插件失败: " + descriptor.id(), e);
         }
 
-        return new PluginWapper(descriptor, plugin, classLoader, candidate.sourcePath());
+        return new PluginWrapper(descriptor, plugin, classLoader, candidate.sourcePath());
     }
 }

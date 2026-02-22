@@ -1,16 +1,14 @@
 package com.nexusadmin.core.plugin.source;
 
 import com.nexusadmin.core.plugin.loader.PluginMetadata;
-import com.nexusadmin.core.registry.Composable;
 
 import java.util.List;
 
 /**
  * 插件源抽象，负责从不同来源发现插件元数据对象。
  * <p>支持本地目录、远程仓库、数据库等多种来源。</p>
- * <p>实现 {@link Composable} 以支持注册中心统一管理。</p>
  */
-public interface PluginSource extends Composable {
+public interface PluginSource {
 
     /**
      * 获取源类型标识。

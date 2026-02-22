@@ -1,348 +1,198 @@
 package com.nexusadmin.core.plugin;
 
-import com.nexusadmin.core.context.PluginContext;
-import com.nexusadmin.core.extension.ExtensionRegistry;
-import com.nexusadmin.core.exception.PluginLoadException;
-import com.nexusadmin.core.plugin.event.PluginLifecycleEvent;
-import com.nexusadmin.core.plugin.event.PluginLifecycleListener;
 import com.nexusadmin.core.plugin.loader.PluginMetadata;
-import com.nexusadmin.core.plugin.loader.PluginWapper;
-import com.nexusadmin.core.plugin.loader.PluginLoader;
-import com.nexusadmin.core.plugin.loader.SourceType;
-import com.nexusadmin.core.plugin.source.PluginSource;
+import com.nexusadmin.core.plugin.loader.PluginWrapper;
 
-import java.io.Closeable;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.Collection;
+import java.util.List;
 
 /**
- * 插件管理器，协调平台层生命周期各阶段。
- * <p>阶段：Discover → Resolve → Load → Install → Start/Stop/Uninstall</p>
- *
- * <p><strong>职责说明：</strong></p>
- * <ul>
- *   <li>本类只负责插件生命周期管理（Discover → Resolve → Load → Install → Start/Stop/Uninstall）</li>
- *   <li>所有组件（Source、Loader、Listener）的注册交由 ComponentRegistry 统一管理</li>
- *   <li>通过构造函数注入所需组件，不再提供注册方法</li>
- *   <li>插件卸载时自动清理该插件注册的所有扩展点实现</li>
- * </ul>
+ * 插件管理器接口，定义插件生命周期的对外 API。
+ * <p>提供完整的插件管理能力，包括发现、解析、加载、初始化、启动、停止、卸载、禁用、启用、升级等操作。</p>
  */
-public class PluginManager {
-
-    private final ExtensionRegistry extensionRegistry;
-    private final List<PluginSource> sources;
-    private final List<PluginLoader> loaders;
-    private final List<PluginLifecycleListener> listeners;
-    private final Map<String, PluginWapper> plugins = new ConcurrentHashMap<>();
-    private final Map<String, PluginLoader> pluginLoaders = new ConcurrentHashMap<>();
+public interface PluginManager {
 
     /**
-     * 构造函数：所有依赖通过参数注入。
-     *
-     * @param extensionRegistry 扩展注册中心
-     * @param sources           插件源列表（由 ComponentRegistry 提供）
-     * @param loaders           插件加载器列表（由 ComponentRegistry 提供）
-     * @param listeners         生命周期监听器列表（由 ComponentRegistry 提供）
+     * 启动插件系统。
+     * <p>执行完整的生命周期流程：发现、解析、加载、初始化、自动启动。</p>
      */
-    public PluginManager(ExtensionRegistry extensionRegistry,
-                         List<PluginSource> sources,
-                         List<PluginLoader> loaders,
-                         List<PluginLifecycleListener> listeners) {
-        this.extensionRegistry = Objects.requireNonNull(extensionRegistry, "扩展注册中心不能为空");
-        this.sources = List.copyOf(sources != null ? sources : List.of());
-        this.loaders = List.copyOf(loaders != null ? loaders : List.of());
-        this.listeners = List.copyOf(listeners != null ? listeners : List.of());
-    }
+    void bootstrap();
 
-    // ==================== 第一阶段：Discover ====================
+    // ===== 启动阶段（有序）=====
 
     /**
-     * 从所有注册的源发现候选插件。
+     * 扫描插件目录，生成候选插件元数据。
      *
-     * @return 候选插件列表
+     * @return 候选插件元数据列表
      */
-    public List<PluginMetadata> discover() {
-        fireEvent(PluginLifecycleEvent.discoverStart());
-
-        List<PluginMetadata> candidates = sources.stream()
-                .flatMap(s -> s.scan().stream())
-                .peek(c -> fireEvent(PluginLifecycleEvent.discovered(c)))
-                .collect(Collectors.toList());
-
-        fireEvent(PluginLifecycleEvent.discoverEnd(candidates.size()));
-        return candidates;
-    }
-
-    // ==================== 第二阶段：Resolve ====================
+    List<PluginMetadata> discover();
 
     /**
-     * 解析候选插件，处理冲突和依赖。
+     * 执行依赖校验和拓扑排序。
      *
-     * @param candidates 候选插件列表
-     * @return 经过裁决后的有效插件列表
+     * @param discoveredPlugins 已发现的插件元数据列表
+     * @return 解析后的插件元数据列表
      */
-    public List<PluginMetadata> resolve(List<PluginMetadata> candidates) {
-        if (candidates == null || candidates.isEmpty()) {
-            return List.of();
-        }
-
-        fireEvent(PluginLifecycleEvent.resolveStart(candidates.size()));
-
-        Map<String, List<PluginMetadata>> grouped = candidates.stream()
-                .collect(Collectors.groupingBy(PluginMetadata::pluginId));
-
-        List<PluginMetadata> resolved = grouped.values().stream()
-                .map(this::selectBest)
-                .peek(c -> fireEvent(PluginLifecycleEvent.resolved(c)))
-                .collect(Collectors.toList());
-
-        fireEvent(PluginLifecycleEvent.resolveEnd(resolved.size()));
-        return resolved;
-    }
-
-    private PluginMetadata selectBest(List<PluginMetadata> list) {
-        return list.stream()
-                .max(Comparator
-                        .comparing((PluginMetadata c) -> score(c.sourceType()))
-                        .thenComparing(c -> c.descriptor().version()))
-                .orElseThrow();
-    }
-
-    private int score(SourceType type) {
-        return switch (type) {
-            case EXTERNAL -> 100;
-            case BUILTIN -> 50;
-            case CLASSPATH -> 10;
-            case REMOTE -> 5;
-        };
-    }
-
-    // ==================== 第三阶段：Load & Install ====================
+    List<PluginMetadata> resolve(List<PluginMetadata> discoveredPlugins);
 
     /**
-     * 加载并安装解析后的插件。
+     * 加载已解析的插件。
+     * <p>执行类加载、注册等操作，将插件置为 LOADED 状态。</p>
      *
-     * @param candidates 经过解析的候选插件列表
+     * @param resolvedPlugins 已解析的插件元数据列表
+     * @return 插件包装对象列表
      */
-    public void install(List<PluginMetadata> candidates) {
-        fireEvent(PluginLifecycleEvent.installStart(candidates.size()));
+    List<PluginWrapper> load(List<PluginMetadata> resolvedPlugins);
 
-        for (PluginMetadata candidate : candidates) {
-            if (plugins.containsKey(candidate.pluginId())) {
-                fireEvent(PluginLifecycleEvent.skipped(candidate, "已存在"));
-                continue;
-            }
-
-            try {
-                PluginWapper loaded = doLoadAndInstall(candidate);
-                fireEvent(PluginLifecycleEvent.installed(loaded));
-            } catch (Exception e) {
-                fireEvent(PluginLifecycleEvent.failed(candidate, e));
-            }
-        }
-
-        fireEvent(PluginLifecycleEvent.installEnd(plugins.size()));
-    }
-
-    private PluginWapper doLoadAndInstall(PluginMetadata candidate) {
-        // 选择合适的加载器
-        PluginLoader loader = loaders.stream()
-                .filter(l -> l.supports(candidate))
-                .findFirst()
-                .orElseThrow(() -> new PluginLoadException("无可用加载器: " + candidate.pluginId()));
-
-        // 加载
-        PluginWapper loaded = loader.load(candidate, extensionRegistry);
-
-        // 安装（调用插件 install 回调）
-        if (loaded.plugin() != null) {
-            loaded.plugin().install(loaded.createContext(extensionRegistry));
-        }
-
-        loaded.state(PluginState.INSTALLED);
-        plugins.put(candidate.pluginId(), loaded);
-        pluginLoaders.put(candidate.pluginId(), loader);
-
-        return loaded;
-    }
-
-    // ==================== 事件通知 ====================
-
-    private void fireEvent(PluginLifecycleEvent event) {
-        for (PluginLifecycleListener listener : listeners) {
-            try {
-                listener.onEvent(event);
-            } catch (Exception ignored) {
-                // 监听器异常不应影响主流程
-            }
-        }
-    }
-
-    // ==================== 第四阶段：生命周期操作 ====================
+    // ===== 生命周期驱动 =====
 
     /**
-     * 启动指定 ID 的插件。
-     * <p>仅允许处于 INSTALLED 或 STOPPED 状态的插件启动。该操作具有幂等性。</p>
+     * 初始化指定插件。
+     * <p>调用插件的 onInitialize 方法，将插件从 LOADED 状态迁移到 INITIALIZED 状态。</p>
      *
-     * @param pluginId 插件 ID
+     * @param pluginId 插件唯一标识
      */
-    public void start(String pluginId) {
-        PluginWapper loaded = require(pluginId);
-
-        if (loaded.state() == PluginState.STARTED) {
-            return;
-        }
-
-        if (loaded.state() != PluginState.INSTALLED && loaded.state() != PluginState.STOPPED) {
-            throw new PluginLoadException("插件当前状态不可启动: " + loaded.state());
-        }
-
-        Plugin plugin = loaded.plugin();
-        if (plugin == null) {
-            throw new PluginLoadException("插件无入口类，无法启动: " + pluginId);
-        }
-
-        fireEvent(PluginLifecycleEvent.starting(loaded));
-
-        PluginContext context = loaded.createContext(extensionRegistry);
-        try {
-            plugin.start(context);
-            loaded.state(PluginState.STARTED);
-            fireEvent(PluginLifecycleEvent.started(loaded));
-        } catch (Exception ex) {
-            loaded.state(PluginState.FAILED);
-            throw new PluginLoadException("启动插件失败: " + pluginId, ex);
-        }
-    }
+    void initialize(String pluginId);
 
     /**
-     * 停止指定 ID 的插件。
-     * <p>仅允许处于 STARTED 状态的插件停止。非运行状态调用将直接返回。</p>
+     * 启动指定插件。
+     * <p>仅允许处于 INITIALIZED 或 STOPPED 状态的插件启动。</p>
      *
-     * @param pluginId 插件 ID
+     * @param pluginId 插件唯一标识
      */
-    public void stop(String pluginId) {
-        PluginWapper loaded = require(pluginId);
-
-        if (loaded.state() != PluginState.STARTED) {
-            return;
-        }
-
-        fireEvent(PluginLifecycleEvent.stopping(loaded));
-
-        Plugin plugin = loaded.plugin();
-        if (plugin == null) {
-            loaded.state(PluginState.STOPPED);
-            fireEvent(PluginLifecycleEvent.stopped(loaded));
-            return;
-        }
-
-        PluginContext context = loaded.createContext(extensionRegistry);
-        try {
-            plugin.stop(context);
-            loaded.state(PluginState.STOPPED);
-            fireEvent(PluginLifecycleEvent.stopped(loaded));
-        } catch (Exception ex) {
-            loaded.state(PluginState.FAILED);
-            throw new PluginLoadException("停止插件失败: " + pluginId, ex);
-        }
-    }
+    void start(String pluginId);
 
     /**
-     * 卸载指定 ID 的插件。
-     * <p>如果插件处于运行中，会先尝试停止。随后执行插件的 uninstall 回调，释放资源并从内存中移除。</p>
+     * 停止指定插件。
+     * <p>仅允许处于 ACTIVE 状态的插件停止。</p>
      *
-     * @param pluginId 插件 ID
+     * @param pluginId 插件唯一标识
      */
-    public void uninstall(String pluginId) {
-        PluginWapper loaded = require(pluginId);
-
-        fireEvent(PluginLifecycleEvent.uninstalling(loaded));
-
-        // 1. 如果处于启动状态，先执行停止
-        if (loaded.state() == PluginState.STARTED) {
-            try {
-                stop(pluginId);
-            } catch (Exception ignored) {
-                // 卸载时忽略停止失败，强制继续
-            }
-        }
-
-        // 2. 调用插件的 uninstall 生命周期方法
-        Plugin plugin = loaded.plugin();
-        if (plugin != null) {
-            PluginContext context = loaded.createContext(extensionRegistry);
-            try {
-                plugin.uninstall(context);
-            } catch (Exception ignored) {
-                // 卸载时忽略插件逻辑错误
-            }
-        }
-
-        // 3. 从扩展注册中心清理该插件注册的所有扩展
-        extensionRegistry.unregisterByPluginId(pluginId);
-
-        // 4. 释放 JVM 资源
-        closeIfPossible(loaded.classLoader());
-
-        // 5. 执行物理卸载（删除文件）
-        PluginLoader loader = pluginLoaders.remove(pluginId);
-        if (loader != null && loader.supportsRemove()) {
-            loader.remove(loaded);
-        }
-
-        plugins.remove(pluginId);
-        loaded.state(PluginState.UNINSTALLED);
-
-        fireEvent(PluginLifecycleEvent.uninstalled(loaded));
-    }
+    void stop(String pluginId);
 
     /**
-     * 获取指定 ID 的插件信息。
+     * 卸载指定插件。
+     * <p>会先尝试停止运行中的插件，然后执行清理和资源释放，将插件置为 UNLOADED 状态。</p>
      *
-     * @param pluginId 插件 ID
-     * @return 对应的 {@link PluginWapper}，不存在时返回 null
+     * @param pluginId 插件唯一标识
      */
-    public PluginWapper get(String pluginId) {
-        return plugins.get(pluginId);
-    }
+    void unload(String pluginId);
 
     /**
-     * 列出当前所有已安装的插件。
+     * 物理删除指定插件。
+     * <p>删除插件文件或目录，并从注册中心移除。</p>
      *
-     * @return 已安装插件集合视图
+     * @param pluginId 插件唯一标识
      */
-    public Collection<PluginWapper> list() {
-        return plugins.values();
-    }
+    void delete(String pluginId);
+
+    // ===== 启用/禁用 =====
 
     /**
-     * 获取指定 ID 的已加载插件信息，如果不存在则抛出异常。
+     * 启用指定插件。
+     * <p>将插件从 DISABLED 状态恢复到 ACTIVE 状态。</p>
      *
-     * @param pluginId 插件 ID
-     * @return 对应的 {@link PluginWapper}
+     * @param pluginId 插件唯一标识
      */
-    private PluginWapper require(String pluginId) {
-        PluginWapper loaded = plugins.get(pluginId);
-        if (loaded == null) {
-            throw new PluginLoadException("plugin not found: " + pluginId);
-        }
-        return loaded;
-    }
+    void enable(String pluginId);
 
     /**
-     * 尝试关闭指定类加载器。
+     * 禁用指定插件。
+     * <p>将插件从 ACTIVE 状态迁移到 DISABLED 状态。</p>
      *
-     * @param classLoader 类加载器
+     * @param pluginId 插件唯一标识
      */
-    private void closeIfPossible(ClassLoader classLoader) {
-        if (classLoader instanceof Closeable closeable) {
-            try {
-                closeable.close();
-            } catch (Exception ignored) {
-                // ignored
-            }
-        }
-    }
+    void disable(String pluginId);
+
+    /**
+     * 检查指定插件是否已启用。
+     *
+     * @param pluginId 插件唯一标识
+     * @return 如果插件已启用返回 true
+     */
+    boolean isEnabled(String pluginId);
+
+    // ===== 升级 =====
+
+    /**
+     * 冷升级指定插件。
+     * <p>停止旧版本，卸载，加载新版本，启动。</p>
+     *
+     * @param pluginId   插件唯一标识
+     * @param newVersion 新版本元数据
+     */
+    void upgradeCold(String pluginId, PluginMetadata newVersion);
+
+    /**
+     * 热升级指定插件。
+     * <p>双实例运行，无缝切换。</p>
+     *
+     * @param pluginId   插件唯一标识
+     * @param newVersion 新版本元数据
+     */
+    void upgradeHot(String pluginId, PluginMetadata newVersion);
+
+    // ===== 查询 =====
+
+    /**
+     * 获取指定插件的当前状态。
+     *
+     * @param pluginId 插件唯一标识
+     * @return 插件状态
+     */
+    PluginState getState(String pluginId);
+
+    /**
+     * 获取指定插件信息。
+     *
+     * @param pluginId 插件唯一标识
+     * @return 插件包装对象，不存在则返回 null
+     */
+    PluginWrapper get(String pluginId);
+
+    /**
+     * 列出所有已加载的插件。
+     *
+     * @return 插件包装对象集合，不会返回 null
+     */
+    Collection<PluginWrapper> list();
+
+    /**
+     * 按状态列出插件。
+     *
+     * @param state 插件状态
+     * @return 指定状态的插件集合
+     */
+    Collection<PluginWrapper> listByState(PluginState state);
+
+    /**
+     * 检查指定插件是否处于活跃状态。
+     *
+     * @param pluginId 插件唯一标识
+     * @return 如果插件处于 ACTIVE 状态返回 true
+     */
+    boolean isActive(String pluginId);
+
+    // ===== 批量操作（有序）=====
+
+    /**
+     * 批量启动插件。
+     *
+     * @param plugins 要启动的插件列表
+     */
+    void startAll(List<PluginWrapper> plugins);
+
+    /**
+     * 批量停止插件。
+     *
+     * @param plugins 要停止的插件列表
+     */
+    void stopAll(List<PluginWrapper> plugins);
+
+    /**
+     * 重新加载失败的插件。
+     *
+     * @param plugins 要重新加载的插件列表
+     */
+    void reloadFailed(List<PluginWrapper> plugins);
 }

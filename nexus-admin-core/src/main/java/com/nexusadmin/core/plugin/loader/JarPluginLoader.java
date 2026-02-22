@@ -15,7 +15,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 
 /**
- * JAR 插件加载器，负责从指定路径（JAR 文件或目录）加载插件并构建 {@link PluginWapper} 对象。
+ * JAR 插件加载器，负责从指定路径（JAR 文件或目录）加载插件并构建 {@link PluginWrapper} 对象。
  * <p>针对开发环境进行了优化：如果给定路径是一个目录且包含 Maven 编译输出目录（target/classes），则自动使用该目录作为类路径。</p>
  */
 public class JarPluginLoader implements PluginLoader {
@@ -32,7 +32,7 @@ public class JarPluginLoader implements PluginLoader {
     }
 
     @Override
-    public PluginWapper load(PluginMetadata candidate, ExtensionRegistry registry) {
+    public PluginWrapper load(PluginMetadata candidate, ExtensionRegistry registry) {
         Path path = candidate.sourcePath();
         if (path == null) {
             throw new PluginLoadException("插件路径为空");
@@ -61,7 +61,7 @@ public class JarPluginLoader implements PluginLoader {
                 }
                 plugin = (Plugin) pluginClass.getDeclaredConstructor().newInstance();
             }
-            return new PluginWapper(descriptor, plugin, classLoader, path);
+            return new PluginWrapper(descriptor, plugin, classLoader, path);
         } catch (Exception ex) {
             throw new PluginLoadException("加载插件失败：" + path, ex);
         }
@@ -83,7 +83,7 @@ public class JarPluginLoader implements PluginLoader {
      * @param plugin 已加载插件
      */
     @Override
-    public void remove(PluginWapper plugin) {
+    public void remove(PluginWrapper plugin) {
         Path path = plugin.pluginPath();
         if (path == null || !Files.exists(path)) {
             return;
