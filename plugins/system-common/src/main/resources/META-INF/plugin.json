@@ -1,6 +1,0 @@
-{
-  "id": "system-common",
-  "version": "1.0.0",
-  "mainClass": "com.nexusadmin.plugin.system.common.SystemCommonPlugin",
-  "description": "系统通用插件"
-}

@@ -121,21 +121,21 @@ public final class PluginContext {
     }
 
     /**
-     * 获取当前运行模式。
-     *
-     * @return 运行模式
-     */
-    public RuntimeMode runtimeMode() {
-        return runtimeMode;
-    }
-
-    /**
      * 获取平台核心版本号。
      *
      * @return 核心版本号
      */
     public String coreVersion() {
         return coreVersion;
+    }
+
+    /**
+     * 获取当前运行模式。
+     *
+     * @return 运行模式
+     */
+    public RuntimeMode runtimeMode() {
+        return runtimeMode;
     }
 
     /**

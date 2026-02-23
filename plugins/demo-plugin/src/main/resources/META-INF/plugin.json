@@ -1,0 +1,6 @@
+{
+  "id": "demo-plugin",
+  "version": "1.0.0",
+  "mainClass": "com.nexusadmin.plugin.demo.DemoPlugin",
+  "description": "示例插件"
+}

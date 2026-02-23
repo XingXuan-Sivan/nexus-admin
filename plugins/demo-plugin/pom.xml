@@ -6,15 +6,18 @@
 
     <parent>
         <groupId>com.nexusadmin</groupId>
-        <artifactId>nexus-admin</artifactId>
+        <artifactId>plugins</artifactId>
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>plugins</artifactId>
-    <packaging>pom</packaging>
+    <artifactId>demo-plugin</artifactId>
+    <packaging>jar</packaging>
 
-    <modules>
-        <module>system-user-plugin</module>
-        <module>demo-plugin</module>
-    </modules>
+    <dependencies>
+        <dependency>
+            <groupId>com.nexusadmin</groupId>
+            <artifactId>nexus-admin-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
 </project>

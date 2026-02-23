@@ -19,11 +19,6 @@ public class PlatformProperties {
      */
     private Plugin plugin = new Plugin();
 
-//    /**
-//     * 开发模式标志。
-//     */
-//    private boolean dev = false;
-
     /**
      * 获取平台基本信息配置。
      *
