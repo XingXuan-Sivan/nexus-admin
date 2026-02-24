@@ -39,19 +39,9 @@ public class DefaultPluginDiscoverer implements PluginDiscoverer {
 
     @Override
     public List<PluginMetadata> discover() {
-        eventBus.publish(new PluginProcessEvent(
-                PluginProcessEvent.Phase.DISCOVER,
-                PluginProcessEvent.Stage.START,
-                0));
-
         List<PluginMetadata> candidates = sources.stream()
                 .flatMap(s -> s.scan().stream())
                 .collect(Collectors.toList());
-
-        eventBus.publish(new PluginProcessEvent(
-                PluginProcessEvent.Phase.DISCOVER,
-                PluginProcessEvent.Stage.END,
-                candidates.size()));
 
         return candidates;
     }

@@ -38,22 +38,12 @@ public class DefaultPluginResolver implements PluginResolver {
             return List.of();
         }
 
-        eventBus.publish(new PluginProcessEvent(
-                PluginProcessEvent.Phase.RESOLVE,
-                PluginProcessEvent.Stage.START,
-                candidates.size()));
-
         Map<String, List<PluginMetadata>> grouped = candidates.stream()
                 .collect(Collectors.groupingBy(PluginMetadata::pluginId));
 
         List<PluginMetadata> resolved = grouped.values().stream()
                 .map(this::selectBest)
                 .collect(Collectors.toList());
-
-        eventBus.publish(new PluginProcessEvent(
-                PluginProcessEvent.Phase.RESOLVE,
-                PluginProcessEvent.Stage.END,
-                resolved.size()));
 
         return resolved;
     }

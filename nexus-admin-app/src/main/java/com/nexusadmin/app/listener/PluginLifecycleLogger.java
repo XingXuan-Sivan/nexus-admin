@@ -44,7 +44,7 @@ public class PluginLifecycleLogger {
      * 处理状态变更事件。
      */
     private void onStateChanged(PluginStateChangedEvent event) {
-        log.info("插件 [{}] {} → {}",
+        log.debug("插件 [{}] {} → {}",
                 event.plugin().getPluginId(),
                 event.from(),
                 event.to());
