@@ -1,13 +1,8 @@
 package com.nexusadmin.core.plugin.discovery;
 
-import com.nexusadmin.core.event.EventBus;
-import com.nexusadmin.core.plugin.RuntimeMode;
-import com.nexusadmin.core.plugin.event.PluginProcessEvent;
 import com.nexusadmin.core.plugin.loader.PluginMetadata;
-import com.nexusadmin.core.plugin.source.PluginSource;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -17,32 +12,28 @@ import java.util.stream.Collectors;
 public class DefaultPluginDiscoverer implements PluginDiscoverer {
 
     private final List<PluginSource> sources;
-    private final EventBus eventBus;
-    private final String coreVersion;
-    private final RuntimeMode runtimeMode;
+    private final List<PluginDescriptorFinder> finders;
+    private final List<PluginDescriptorParser> parsers;
 
     /**
      * 构造插件发现器。
      *
-     * @param sources     插件源列表
-     * @param eventBus    事件总线
-     * @param coreVersion 核心版本号
-     * @param runtimeMode 运行模式
+     * @param sources 插件源列表
+     * @param finders 描述文件查找器列表
+     * @param parsers 描述文件解析器列表
      */
-    public DefaultPluginDiscoverer(List<PluginSource> sources, EventBus eventBus,
-                                   String coreVersion, RuntimeMode runtimeMode) {
+    public DefaultPluginDiscoverer(List<PluginSource> sources,
+                                   List<PluginDescriptorFinder> finders,
+                                   List<PluginDescriptorParser> parsers) {
         this.sources = List.copyOf(sources != null ? sources : List.of());
-        this.eventBus = Objects.requireNonNull(eventBus, "事件总线不能为空");
-        this.coreVersion = Objects.requireNonNull(coreVersion, "核心版本号不能为空");
-        this.runtimeMode = Objects.requireNonNull(runtimeMode, "运行模式不能为空");
+        this.finders = List.copyOf(finders != null ? finders : List.of());
+        this.parsers = List.copyOf(parsers != null ? parsers : List.of());
     }
 
     @Override
     public List<PluginMetadata> discover() {
-        List<PluginMetadata> candidates = sources.stream()
+        return sources.stream()
                 .flatMap(s -> s.scan().stream())
                 .collect(Collectors.toList());
-
-        return candidates;
     }
 }

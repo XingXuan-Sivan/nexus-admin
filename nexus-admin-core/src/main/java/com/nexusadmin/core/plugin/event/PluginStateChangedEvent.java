@@ -1,6 +1,6 @@
 package com.nexusadmin.core.plugin.event;
 
-import com.nexusadmin.core.plugin.PluginState;
+import com.nexusadmin.core.PluginState;
 import com.nexusadmin.core.plugin.loader.PluginWrapper;
 
 import java.time.Instant;

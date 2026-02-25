@@ -1,7 +1,7 @@
 package com.nexusadmin.plugin.system.user;
 
 
-import com.nexusadmin.core.plugin.Plugin;
+import com.nexusadmin.core.Plugin;
 import com.nexusadmin.core.context.PluginContext;
 
 /**

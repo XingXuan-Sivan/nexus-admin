@@ -1,6 +1,6 @@
 package com.nexusadmin.app.config;
 
-import com.nexusadmin.core.plugin.PluginManager;
+import com.nexusadmin.core.PluginManager;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;

@@ -3,10 +3,11 @@ package com.nexusadmin.core.plugin.loader;
 import com.nexusadmin.core.event.EventPublisher;
 import com.nexusadmin.core.extension.ExtensionRegistry;
 import com.nexusadmin.core.context.PluginContext;
-import com.nexusadmin.core.plugin.Plugin;
-import com.nexusadmin.core.plugin.PluginState;
+import com.nexusadmin.core.Plugin;
+import com.nexusadmin.core.PluginState;
 import com.nexusadmin.core.plugin.RuntimeMode;
-import com.nexusadmin.core.plugin.descriptor.PluginDescriptor;
+import com.nexusadmin.core.plugin.discovery.PluginDescriptor;
+import com.nexusadmin.core.plugin.discovery.PluginSource;
 
 import java.nio.file.Path;
 
@@ -32,9 +33,9 @@ public final class PluginWrapper {
     private final ClassLoader classLoader;
 
     /**
-     * 插件所在的物理路径。
+     * 插件来源，包含路径和物理卸载能力。
      */
-    private final Path pluginPath;
+    private final PluginSource source;
 
     /**
      * 插件当前生命周期状态。
@@ -47,16 +48,16 @@ public final class PluginWrapper {
      * @param descriptor  插件描述信息
      * @param plugin      插件实例
      * @param classLoader 类加载器
-     * @param pluginPath  插件路径
+     * @param source      插件来源
      */
     public PluginWrapper(PluginDescriptor descriptor,
                          Plugin plugin,
                          ClassLoader classLoader,
-                         Path pluginPath) {
+                         PluginSource source) {
         this.descriptor = descriptor;
         this.plugin = plugin;
         this.classLoader = classLoader;
-        this.pluginPath = pluginPath;
+        this.source = source;
         this.state = PluginState.RESOLVED;
     }
 
@@ -97,12 +98,46 @@ public final class PluginWrapper {
     }
 
     /**
+     * 获取插件来源。
+     *
+     * @return 插件来源
+     */
+    public PluginSource source() {
+        return source;
+    }
+
+    /**
+     * 获取插件来源类型
+     *
+     * @return 插件来源类型
+     */
+    public SourceType sourceType() {
+        return source.getType();
+    }
+
+    /**
      * 获取插件物理路径。
      *
-     * @return 插件路径
+     * @return 插件物理路径，可能为 null
      */
-    public Path pluginPath() {
-        return pluginPath;
+    public Path physicalPath() {
+        return source.getPhysicalPath();
+    }
+
+    /**
+     * 是否支持物理卸载。
+     *
+     * @return 如果支持物理卸载返回 true
+     */
+    public boolean supportsPhysicalRemoval() {
+        return source.supportsPhysicalRemoval();
+    }
+
+    /**
+     * 执行物理卸载。
+     */
+    public void removePhysically() {
+        source.removePhysically();
     }
 
     /**
@@ -137,7 +172,7 @@ public final class PluginWrapper {
                                        EventPublisher eventPublisher,
                                        RuntimeMode runtimeMode,
                                        String coreVersion) {
-        return new PluginContext(descriptor, registry, classLoader, pluginPath,
+        return new PluginContext(descriptor, registry, classLoader, source,
                 eventPublisher, runtimeMode, coreVersion);
     }
 }

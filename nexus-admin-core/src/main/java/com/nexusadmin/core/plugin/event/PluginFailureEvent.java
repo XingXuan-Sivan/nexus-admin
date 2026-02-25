@@ -1,6 +1,6 @@
 package com.nexusadmin.core.plugin.event;
 
-import com.nexusadmin.core.plugin.descriptor.PluginDescriptor;
+import com.nexusadmin.core.plugin.discovery.PluginDescriptor;
 
 import java.time.Instant;
 

@@ -1,7 +1,7 @@
 package com.nexusadmin.app.listener;
 
 import com.nexusadmin.core.event.EventBus;
-import com.nexusadmin.core.plugin.PluginState;
+import com.nexusadmin.core.PluginState;
 import com.nexusadmin.core.plugin.event.PluginStateChangedEvent;
 import com.nexusadmin.core.plugin.event.PluginProcessEvent;
 import com.nexusadmin.core.plugin.event.PluginUpgradeEvent;

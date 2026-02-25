@@ -1,7 +1,7 @@
 package com.nexusadmin.plugin.demo;
 
 import com.nexusadmin.core.context.PluginContext;
-import com.nexusadmin.core.plugin.Plugin;
+import com.nexusadmin.core.Plugin;
 
 /**
  * 示例插件入口，负责在插件启动与停止时完成 SPI 注册与资源管理。

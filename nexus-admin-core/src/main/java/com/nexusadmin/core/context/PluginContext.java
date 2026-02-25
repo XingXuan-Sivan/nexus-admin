@@ -3,7 +3,9 @@ package com.nexusadmin.core.context;
 import com.nexusadmin.core.event.EventPublisher;
 import com.nexusadmin.core.extension.ExtensionRegistry;
 import com.nexusadmin.core.plugin.RuntimeMode;
-import com.nexusadmin.core.plugin.descriptor.PluginDescriptor;
+import com.nexusadmin.core.plugin.discovery.PluginDescriptor;
+import com.nexusadmin.core.plugin.discovery.PluginSource;
+import com.nexusadmin.core.plugin.loader.SourceType;
 
 import java.nio.file.Path;
 
@@ -29,9 +31,9 @@ public final class PluginContext {
     private final ClassLoader classLoader;
 
     /**
-     * 插件所在的物理路径，可以是目录或 JAR 文件。
+     * 插件来源，包含类型、路径等信息。
      */
-    private final Path pluginPath;
+    private final PluginSource source;
 
     /**
      * 事件发布者，插件可通过它发布事件。
@@ -54,7 +56,7 @@ public final class PluginContext {
      * @param descriptor        插件描述信息
      * @param extensionRegistry 扩展注册中心
      * @param classLoader       插件类加载器
-     * @param pluginPath        插件路径
+     * @param source            插件来源
      * @param eventPublisher    事件发布者
      * @param runtimeMode       运行模式
      * @param coreVersion       核心版本号
@@ -62,14 +64,14 @@ public final class PluginContext {
     public PluginContext(PluginDescriptor descriptor,
                          ExtensionRegistry extensionRegistry,
                          ClassLoader classLoader,
-                         Path pluginPath,
+                         PluginSource source,
                          EventPublisher eventPublisher,
                          RuntimeMode runtimeMode,
                          String coreVersion) {
         this.descriptor = descriptor;
         this.extensionRegistry = extensionRegistry;
         this.classLoader = classLoader;
-        this.pluginPath = pluginPath;
+        this.source = source;
         this.eventPublisher = eventPublisher;
         this.runtimeMode = runtimeMode;
         this.coreVersion = coreVersion;
@@ -103,12 +105,21 @@ public final class PluginContext {
     }
 
     /**
-     * 获取插件路径。
+     * 获取插件来源类型
      *
-     * @return 插件路径
+     * @return 插件来源类型
      */
-    public Path pluginPath() {
-        return pluginPath;
+    public SourceType sourceType() {
+        return source.getType();
+    }
+
+    /**
+     * 获取插件物理路径。
+     *
+     * @return 插件物理路径，可能为 null
+     */
+    public Path physicalPath() {
+        return source.getPhysicalPath();
     }
 
     /**

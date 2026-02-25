@@ -1,34 +1,30 @@
 package com.nexusadmin.app.config;
 
 import com.nexusadmin.app.config.properties.PlatformProperties;
+import com.nexusadmin.core.DefaultPluginManager;
+import com.nexusadmin.core.PluginManager;
 import com.nexusadmin.core.event.EventBus;
 import com.nexusadmin.core.event.SyncEventBus;
 import com.nexusadmin.core.extension.DefaultExtensionRegistry;
 import com.nexusadmin.core.extension.ExtensionRegistry;
-import com.nexusadmin.core.plugin.DefaultPluginManager;
-import com.nexusadmin.core.plugin.PluginManager;
+import com.nexusadmin.core.plugin.DefaultPluginRegistry;
+import com.nexusadmin.core.plugin.PluginRegistry;
 import com.nexusadmin.core.plugin.RuntimeMode;
-import com.nexusadmin.core.plugin.descriptor.PluginDescriptorFinder;
-import com.nexusadmin.core.plugin.descriptor.PluginDescriptorReader;
-import com.nexusadmin.core.plugin.descriptor.finder.DevDirectoryFinder;
-import com.nexusadmin.core.plugin.descriptor.finder.JarFinder;
-import com.nexusadmin.core.plugin.descriptor.finder.PackedDirectoryFinder;
-import com.nexusadmin.core.plugin.descriptor.parser.JsonPluginDescriptorParser;
-import com.nexusadmin.core.plugin.descriptor.reader.JsonDescriptorReader;
-import com.nexusadmin.core.plugin.loader.ClasspathPluginLoader;
-import com.nexusadmin.core.plugin.loader.JarPluginLoader;
+import com.nexusadmin.core.plugin.discovery.PluginDescriptorFinder;
+import com.nexusadmin.core.plugin.discovery.PluginDescriptorParser;
+import com.nexusadmin.core.plugin.discovery.PluginSource;
+import com.nexusadmin.core.plugin.discovery.finder.DevDirectoryFinder;
+import com.nexusadmin.core.plugin.discovery.finder.JarFinder;
+import com.nexusadmin.core.plugin.discovery.finder.PackedDirectoryFinder;
+import com.nexusadmin.core.plugin.discovery.parser.JsonPluginDescriptorParser;
+import com.nexusadmin.core.plugin.discovery.source.ClasspathPluginSource;
+import com.nexusadmin.core.plugin.discovery.source.LocalDirectorySource;
+import com.nexusadmin.core.plugin.loader.DefaultPluginLoader;
 import com.nexusadmin.core.plugin.loader.PluginLoader;
-import com.nexusadmin.core.plugin.registry.DefaultPluginRegistry;
-import com.nexusadmin.core.plugin.registry.PluginRegistry;
-import com.nexusadmin.core.plugin.discovery.DefaultPluginDiscoverer;
-import com.nexusadmin.core.plugin.discovery.PluginDiscoverer;
-import com.nexusadmin.core.plugin.resolution.DefaultPluginResolver;
-import com.nexusadmin.core.plugin.resolution.PluginResolver;
-import com.nexusadmin.core.plugin.source.ClasspathPluginSource;
-import com.nexusadmin.core.plugin.source.LocalDirectorySource;
-import com.nexusadmin.core.plugin.source.PluginSource;
-import com.nexusadmin.core.plugin.version.DefaultVersionManager;
-import com.nexusadmin.core.plugin.version.VersionManager;
+import com.nexusadmin.core.plugin.resolve.DefaultDependenceManager;
+import com.nexusadmin.core.plugin.resolve.DependenceManager;
+import com.nexusadmin.core.plugin.resolve.VersionManager;
+import com.nexusadmin.core.plugin.resolve.version.DefaultVersionManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -102,13 +98,14 @@ public class BootstrapConfig {
     }
 
     /**
-     * JSON 描述文件解析器。
+     * 依赖管理器。
      *
-     * @return JsonPluginDescriptorParser 实例
+     * @param versionManager 版本管理器
+     * @return DependenceManager 实例
      */
     @Bean
-    public JsonPluginDescriptorParser jsonPluginDescriptorParser() {
-        return new JsonPluginDescriptorParser();
+    public DependenceManager dependenceManager(VersionManager versionManager) {
+        return new DefaultDependenceManager(versionManager);
     }
 
     /**
@@ -126,83 +123,44 @@ public class BootstrapConfig {
     }
 
     /**
-     * 描述文件读取器。
+     * 描述文件解析器列表。
      *
-     * @param parser  JSON 描述文件解析器
      * @param finders 描述文件查找器列表
-     * @return PluginDescriptorReader 实例
+     * @return 描述文件解析器列表
      */
     @Bean
-    public PluginDescriptorReader pluginDescriptorReader(
-            JsonPluginDescriptorParser parser,
-            List<PluginDescriptorFinder> finders) {
-        return new JsonDescriptorReader(parser, finders);
+    public List<PluginDescriptorParser> descriptorParsers(List<PluginDescriptorFinder> finders) {
+        return List.of(new JsonPluginDescriptorParser(finders));
     }
 
     /**
      * 插件源列表。
      *
      * @param properties 平台配置属性
-     * @param reader     描述文件读取器
-     * @param parser     JSON 描述文件解析器
+     * @param parsers    描述文件解析器列表
      * @return 插件源列表
      */
     @Bean
     public List<PluginSource> pluginSources(
             PlatformProperties properties,
-            PluginDescriptorReader reader,
-            JsonPluginDescriptorParser parser) {
+            List<PluginDescriptorParser> parsers) {
         return List.of(
                 new LocalDirectorySource(
                         Paths.get(properties.getPlugin().getPath()),
-                        reader
+                        parsers
                 ),
-                new ClasspathPluginSource(parser)
+                new ClasspathPluginSource()
         );
     }
 
     /**
-     * 插件加载器列表。
+     * 插件加载器。
      *
-     * @return 插件加载器列表
+     * @return 插件加载器
      */
     @Bean
-    public List<PluginLoader> pluginLoaders() {
-        return List.of(
-                new JarPluginLoader(),
-                new ClasspathPluginLoader()
-        );
-    }
-
-    /**
-     * 插件发现器。
-     *
-     * @param sources     插件源列表
-     * @param eventBus    事件总线
-     * @param properties  平台配置属性
-     * @param runtimeMode 运行模式
-     * @return PluginDiscoverer 实例
-     */
-    @Bean
-    public PluginDiscoverer pluginDiscoverer(
-            List<PluginSource> sources,
-            EventBus eventBus,
-            PlatformProperties properties,
-            RuntimeMode runtimeMode) {
-        return new DefaultPluginDiscoverer(sources, eventBus,
-                properties.getPlugin().getCoreVersion(), runtimeMode);
-    }
-
-    /**
-     * 插件解析器。
-     *
-     * @param eventBus       事件总线
-     * @param versionManager 版本管理器
-     * @return PluginResolver 实例
-     */
-    @Bean
-    public PluginResolver pluginResolver(EventBus eventBus, VersionManager versionManager) {
-        return new DefaultPluginResolver(eventBus, versionManager);
+    public PluginLoader pluginLoader() {
+        return new DefaultPluginLoader();
     }
 
     // ==================== 插件管理器初始化 ====================
@@ -213,14 +171,14 @@ public class BootstrapConfig {
      * @param pluginRegistry    插件注册中心
      * @param extensionRegistry 扩展注册中心
      * @param eventBus          事件总线
-     * @param versionManager    版本管理器
      * @param runtimeMode       运行模式
      * @param properties        平台配置属性
-     * @param pluginDiscoverer  插件发现器
-     * @param pluginResolver    插件解析器
-     * @param loaders           插件加载器列表
-     * @param finders           描述文件查找器列表
      * @param sources           插件源列表
+     * @param finders           描述文件查找器列表
+     * @param parsers           描述文件解析器列表
+     * @param versionManager    版本管理器
+     * @param dependenceManager 依赖管理器
+     * @param pluginLoader      插件加载器
      * @return PluginManager 实例
      */
     @Bean
@@ -228,27 +186,27 @@ public class BootstrapConfig {
             PluginRegistry pluginRegistry,
             ExtensionRegistry extensionRegistry,
             EventBus eventBus,
-            VersionManager versionManager,
             RuntimeMode runtimeMode,
             PlatformProperties properties,
-            PluginDiscoverer pluginDiscoverer,
-            PluginResolver pluginResolver,
-            List<PluginLoader> loaders,
+            List<PluginSource> sources,
             List<PluginDescriptorFinder> finders,
-            List<PluginSource> sources) {
+            List<PluginDescriptorParser> parsers,
+            VersionManager versionManager,
+            DependenceManager dependenceManager,
+            PluginLoader pluginLoader) {
 
         return new DefaultPluginManager(
                 pluginRegistry,
                 extensionRegistry,
                 eventBus,
-                versionManager,
                 runtimeMode,
                 properties.getPlugin().getCoreVersion(),
-                pluginDiscoverer,
-                pluginResolver,
-                loaders,
-                finders,
                 sources,
+                finders,
+                parsers,
+                versionManager,
+                dependenceManager,
+                pluginLoader,
                 properties.getPlugin().isAutoStart()
         );
     }
