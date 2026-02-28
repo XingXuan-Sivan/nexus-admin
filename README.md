@@ -52,21 +52,9 @@ backend/
 
 ![项目架构](docs/项目架构.png)
 
-## 文档
-
-### 用户指南
+## 用户指南
 
 - [快速开始](docs/user-guid/快速开始.md)
-- [开发插件](docs/user-guid/开发插件.md)
-
-### 设计文档
-
-- [整体架构](docs/developer-guid/设计文档/整体架构.md)
-- [插件系统](docs/developer-guid/设计文档/插件系统.md)
-- [插件生命周期](docs/developer-guid/设计文档/插件生命周期.md)
-- [拓展点系统](docs/developer-guid/设计文档/拓展点系统.md)
-- [插件描述文件](docs/developer-guid/设计文档/插件描述文件.md)
-- [事件系统](docs/developer-guid/设计文档/事件系统.md)
 
 ## 项目状态
 
