@@ -136,6 +136,10 @@ public class PlatformProperties {
          */
         private String path = "plugins";
         /**
+         * 插件数据目录路径。
+         */
+        private String dataPath = "plugins-data";
+        /**
          * 插件核心版本号。
          */
         private String coreVersion = "1.0.0";
@@ -164,6 +168,24 @@ public class PlatformProperties {
          */
         public void setPath(String path) {
             this.path = path;
+        }
+
+        /**
+         * 获取插件数据目录路径。
+         *
+         * @return 插件数据目录路径
+         */
+        public String getDataPath() {
+            return dataPath;
+        }
+
+        /**
+         * 设置插件数据目录路径。
+         *
+         * @param dataPath 插件数据目录路径
+         */
+        public void setDataPath(String dataPath) {
+            this.dataPath = dataPath;
         }
 
         /**

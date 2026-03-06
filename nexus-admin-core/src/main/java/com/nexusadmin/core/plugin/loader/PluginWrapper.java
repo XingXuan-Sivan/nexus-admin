@@ -1,19 +1,16 @@
 package com.nexusadmin.core.plugin.loader;
 
-import com.nexusadmin.core.event.EventPublisher;
-import com.nexusadmin.core.extension.ExtensionRegistry;
-import com.nexusadmin.core.context.PluginContext;
 import com.nexusadmin.core.Plugin;
 import com.nexusadmin.core.PluginState;
-import com.nexusadmin.core.plugin.RuntimeMode;
 import com.nexusadmin.core.plugin.discovery.PluginDescriptor;
 import com.nexusadmin.core.plugin.discovery.PluginSource;
 
 import java.nio.file.Path;
 
 /**
- * 已加载的插件封装类，持有插件的描述信息、实例、类加载器及当前状态。
- * <p>提供状态迁移控制，确保生命周期状态转换的合法性。</p>
+ * 插件包装器，封装已加载插件的运行时信息。
+ * <p>包含插件描述符、插件实例、类加载器、来源和状态。</p>
+ * <p>不负责创建 PluginContext，仅维护插件的基本运行时信息。</p>
  */
 public final class PluginWrapper {
 
@@ -157,22 +154,5 @@ public final class PluginWrapper {
      */
     public void state(PluginState state) {
         this.state = state;
-    }
-
-    /**
-     * 为该插件创建运行上下文。
-     *
-     * @param registry      全局扩展注册中心
-     * @param eventPublisher 事件发布者
-     * @param runtimeMode   运行模式
-     * @param coreVersion   核心版本号
-     * @return 插件上下文实例
-     */
-    public PluginContext createContext(ExtensionRegistry registry,
-                                       EventPublisher eventPublisher,
-                                       RuntimeMode runtimeMode,
-                                       String coreVersion) {
-        return new PluginContext(descriptor, registry, classLoader, source,
-                eventPublisher, runtimeMode, coreVersion);
     }
 }

@@ -1,5 +1,10 @@
 package com.nexusadmin.core;
 
+import com.nexusadmin.core.context.PlatformAccess;
+import com.nexusadmin.core.context.PluginContext;
+import com.nexusadmin.core.context.PluginInfo;
+import com.nexusadmin.core.context.PluginRuntime;
+import com.nexusadmin.core.context.PluginWorkspace;
 import com.nexusadmin.core.event.EventBus;
 import com.nexusadmin.core.exception.PluginLoadException;
 import com.nexusadmin.core.extension.ExtensionRegistry;
@@ -17,10 +22,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 抽象插件管理器，实现生命周期流程编排。
@@ -35,10 +42,16 @@ public abstract class AbstractPluginManager implements PluginManager {
     protected final EventBus eventBus;
     protected final RuntimeMode runtimeMode;
     protected final String coreVersion;
+    protected final Path pluginsDataRoot;
 
     protected PluginDiscoverer pluginDiscoverer;
     protected PluginResolver pluginResolver;
     protected PluginLoader pluginLoader;
+
+    /**
+     * 插件上下文缓存，用于生命周期方法调用。
+     */
+    private final ConcurrentHashMap<String, PluginContext> pluginContexts = new ConcurrentHashMap<>();
 
     /**
      * 生命周期专用锁，保证状态迁移原子性。
@@ -54,17 +67,20 @@ public abstract class AbstractPluginManager implements PluginManager {
      * @param eventBus          事件总线
      * @param runtimeMode       运行模式
      * @param coreVersion       核心版本号
+     * @param pluginsDataRoot   插件数据根目录
      */
     protected AbstractPluginManager(PluginRegistry pluginRegistry,
                                     ExtensionRegistry extensionRegistry,
                                     EventBus eventBus,
                                     RuntimeMode runtimeMode,
-                                    String coreVersion) {
+                                    String coreVersion,
+                                    Path pluginsDataRoot) {
         this.pluginRegistry = Objects.requireNonNull(pluginRegistry, "插件注册中心不能为空");
         this.extensionRegistry = Objects.requireNonNull(extensionRegistry, "扩展注册中心不能为空");
         this.eventBus = Objects.requireNonNull(eventBus, "事件总线不能为空");
         this.runtimeMode = Objects.requireNonNull(runtimeMode, "运行模式不能为空");
         this.coreVersion = Objects.requireNonNull(coreVersion, "核心版本号不能为空");
+        this.pluginsDataRoot = Objects.requireNonNull(pluginsDataRoot, "插件数据根目录不能为空");
     }
 
     /**
@@ -97,6 +113,48 @@ public abstract class AbstractPluginManager implements PluginManager {
      * @return 插件加载器实例
      */
     protected abstract PluginLoader createPluginLoader();
+
+    /**
+     * 创建插件上下文。
+     * <p>在插件初始化前调用，构造四层模型上下文。</p>
+     *
+     * @param wrapper 插件包装对象
+     * @return 插件上下文实例
+     */
+    protected PluginContext createPluginContext(PluginWrapper wrapper) {
+        String pluginId = wrapper.getPluginId();
+
+        // 构建四层模型
+        PluginInfo info = new PluginInfo(
+                wrapper.descriptor(),
+                wrapper.classLoader(),
+                wrapper.physicalPath()
+        );
+
+        PluginRuntime runtime = new PluginRuntime(wrapper::state);
+
+        // Workspace 采用懒加载，首次访问时才创建目录
+        PluginWorkspace workspace = new PluginWorkspace(pluginsDataRoot.resolve("workspace").resolve(pluginId));
+
+        PlatformAccess platform = new PlatformAccess(
+                extensionRegistry,
+                eventBus::publish,
+                runtimeMode,
+                coreVersion
+        );
+
+        return new PluginContext(info, runtime, workspace, platform);
+    }
+
+    /**
+     * 获取或创建插件上下文。
+     *
+     * @param wrapper 插件包装对象
+     * @return 插件上下文实例
+     */
+    protected PluginContext getOrCreateContext(PluginWrapper wrapper) {
+        return pluginContexts.computeIfAbsent(wrapper.getPluginId(), id -> createPluginContext(wrapper));
+    }
 
     // ===== 状态迁移控制 =====
 
@@ -235,8 +293,8 @@ public abstract class AbstractPluginManager implements PluginManager {
 
         if (plugin != null) {
             try {
-                plugin.onInitialize(wrapper.createContext(
-                        extensionRegistry, eventBus::publish, runtimeMode, coreVersion));
+                PluginContext context = getOrCreateContext(wrapper);
+                plugin.onInitialize(context);
                 transition(wrapper, PluginState.INITIALIZED);
             } catch (Exception e) {
                 handleFailure(wrapper, e);
@@ -270,7 +328,8 @@ public abstract class AbstractPluginManager implements PluginManager {
         Plugin plugin = wrapper.plugin();
         if (plugin != null) {
             try {
-                plugin.onStart();
+                PluginContext context = getOrCreateContext(wrapper);
+                plugin.onStart(context);
                 transition(wrapper, PluginState.ACTIVE);
             } catch (Exception e) {
                 handleFailure(wrapper, e);
@@ -294,7 +353,8 @@ public abstract class AbstractPluginManager implements PluginManager {
         Plugin plugin = wrapper.plugin();
         if (plugin != null) {
             try {
-                plugin.onStop();
+                PluginContext context = getOrCreateContext(wrapper);
+                plugin.onStop(context);
             } catch (Exception e) {
                 handleFailure(wrapper, e);
                 throw new PluginLoadException("插件停止失败: " + pluginId, e);
@@ -321,7 +381,8 @@ public abstract class AbstractPluginManager implements PluginManager {
         Plugin plugin = wrapper.plugin();
         if (plugin != null) {
             try {
-                plugin.onUnload();
+                PluginContext context = getOrCreateContext(wrapper);
+                plugin.onUnload(context);
             } catch (Exception ignored) {
                 // 卸载时忽略插件逻辑错误
             }
@@ -336,7 +397,10 @@ public abstract class AbstractPluginManager implements PluginManager {
         // 5. 释放 JVM 资源
         closeIfPossible(wrapper.classLoader());
 
-        // 6. 迁移到 UNLOADED 状态
+        // 6. 移除上下文缓存
+        pluginContexts.remove(pluginId);
+
+        // 7. 迁移到 UNLOADED 状态
         transition(wrapper, PluginState.UNLOADED);
     }
 
@@ -349,8 +413,21 @@ public abstract class AbstractPluginManager implements PluginManager {
             wrapper.removePhysically();
         }
 
+        // 删除插件 workspace
+        PluginContext context = pluginContexts.get(pluginId);
+        if (context != null) {
+            try {
+                context.workspace().delete();
+            } catch (Exception e) {
+                log.warn("删除插件 workspace 失败: {}", pluginId, e);
+            }
+        }
+
         // 从注册中心移除
         pluginRegistry.unregister(pluginId);
+
+        // 移除上下文缓存
+        pluginContexts.remove(pluginId);
 
         eventBus.publish(new PluginProcessEvent(
                 PluginProcessEvent.Phase.DELETE,
@@ -371,8 +448,9 @@ public abstract class AbstractPluginManager implements PluginManager {
         Plugin plugin = wrapper.plugin();
         if (plugin != null) {
             try {
-                plugin.onEnable();
-                plugin.onStart();
+                PluginContext context = getOrCreateContext(wrapper);
+                plugin.onEnable(context);
+                plugin.onStart(context);
             } catch (Exception e) {
                 handleFailure(wrapper, e);
                 throw new PluginLoadException("插件启用失败: " + pluginId, e);
@@ -395,7 +473,8 @@ public abstract class AbstractPluginManager implements PluginManager {
         Plugin plugin = wrapper.plugin();
         if (plugin != null) {
             try {
-                plugin.onDisable();
+                PluginContext context = getOrCreateContext(wrapper);
+                plugin.onDisable(context);
             } catch (Exception e) {
                 handleFailure(wrapper, e);
                 throw new PluginLoadException("插件禁用失败: " + pluginId, e);

@@ -19,6 +19,7 @@ import com.nexusadmin.core.plugin.resolve.DependenceManager;
 import com.nexusadmin.core.plugin.resolve.PluginResolver;
 import com.nexusadmin.core.plugin.resolve.VersionManager;
 
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 
@@ -45,6 +46,7 @@ public class DefaultPluginManager extends AbstractPluginManager {
      * @param eventBus          事件总线
      * @param runtimeMode       运行模式
      * @param coreVersion       核心版本号
+     * @param pluginsDataRoot   插件数据根目录
      * @param sources           插件源列表
      * @param finders           描述文件查找器列表
      * @param parsers           描述文件解析器列表
@@ -58,6 +60,7 @@ public class DefaultPluginManager extends AbstractPluginManager {
                                 EventBus eventBus,
                                 RuntimeMode runtimeMode,
                                 String coreVersion,
+                                Path pluginsDataRoot,
                                 List<PluginSource> sources,
                                 List<PluginDescriptorFinder> finders,
                                 List<PluginDescriptorParser> parsers,
@@ -65,7 +68,7 @@ public class DefaultPluginManager extends AbstractPluginManager {
                                 DependenceManager dependenceManager,
                                 PluginLoader pluginLoader,
                                 boolean autoStart) {
-        super(pluginRegistry, extensionRegistry, eventBus, runtimeMode, coreVersion);
+        super(pluginRegistry, extensionRegistry, eventBus, runtimeMode, coreVersion, pluginsDataRoot);
         this.sources = List.copyOf(sources != null ? sources : List.of());
         this.finders = List.copyOf(finders != null ? finders : List.of());
         this.parsers = List.copyOf(parsers != null ? parsers : List.of());

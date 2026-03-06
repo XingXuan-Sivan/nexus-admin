@@ -201,6 +201,7 @@ public class BootstrapConfig {
                 eventBus,
                 runtimeMode,
                 properties.getPlugin().getCoreVersion(),
+                Paths.get(properties.getPlugin().getDataPath()),
                 sources,
                 finders,
                 parsers,

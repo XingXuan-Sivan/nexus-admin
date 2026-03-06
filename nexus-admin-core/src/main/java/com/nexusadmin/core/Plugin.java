@@ -23,37 +23,41 @@ public interface Plugin {
      * <p>状态迁移：STARTING → ACTIVE</p>
      * <p>在此方法中注册扩展点实现、启动后台服务等。</p>
      *
+     * @param context 插件运行上下文
      * @throws Exception 启动过程中发生异常
      */
-    void onStart() throws Exception;
+    void onStart(PluginContext context) throws Exception;
 
     /**
      * 插件停止时调用的回调方法。
      * <p>状态迁移：ACTIVE → STOPPING</p>
      * <p>用于释放资源或从扩展注册中心注销实现。</p>
      *
+     * @param context 插件运行上下文
      * @throws Exception 停止过程中发生异常
      */
-    void onStop() throws Exception;
+    void onStop(PluginContext context) throws Exception;
 
     /**
      * 插件卸载阶段回调。
      * <p>状态迁移：STOPPED → UNLOADED</p>
      * <p>用于清理外部副作用或删除临时文件。</p>
      *
+     * @param context 插件运行上下文
      * @throws Exception 卸载过程中发生异常
      */
-    void onUnload() throws Exception;
+    void onUnload(PluginContext context) throws Exception;
 
     /**
      * 热升级钩子（可选）。
      * <p>状态：UPGRADING</p>
      * <p>在热升级过程中调用，用于数据迁移或状态同步。</p>
      *
+     * @param oldContext 旧版本插件的运行上下文
      * @param newContext 新版本插件的运行上下文
      * @throws Exception 升级过程中发生异常
      */
-    default void onUpgrade(PluginContext newContext) throws Exception {
+    default void onUpgrade(PluginContext oldContext, PluginContext newContext) throws Exception {
         // 默认无操作
     }
 
@@ -62,9 +66,10 @@ public interface Plugin {
      * <p>状态迁移：ACTIVE → DISABLED</p>
      * <p>插件被禁用时调用。</p>
      *
+     * @param context 插件运行上下文
      * @throws Exception 禁用过程中发生异常
      */
-    default void onDisable() throws Exception {
+    default void onDisable(PluginContext context) throws Exception {
         // 默认无操作
     }
 
@@ -73,9 +78,10 @@ public interface Plugin {
      * <p>状态迁移：DISABLED → STARTING</p>
      * <p>插件被重新启用时调用。</p>
      *
+     * @param context 插件运行上下文
      * @throws Exception 启用过程中发生异常
      */
-    default void onEnable() throws Exception {
+    default void onEnable(PluginContext context) throws Exception {
         // 默认无操作
     }
 }

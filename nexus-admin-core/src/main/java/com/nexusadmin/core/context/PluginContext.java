@@ -1,169 +1,80 @@
 package com.nexusadmin.core.context;
 
-import com.nexusadmin.core.event.EventPublisher;
-import com.nexusadmin.core.extension.ExtensionRegistry;
-import com.nexusadmin.core.plugin.RuntimeMode;
-import com.nexusadmin.core.plugin.discovery.PluginDescriptor;
-import com.nexusadmin.core.plugin.discovery.PluginSource;
-import com.nexusadmin.core.plugin.loader.SourceType;
-
-import java.nio.file.Path;
+import java.util.Objects;
 
 /**
- * 插件运行上下文，封装插件在平台中的元数据、扩展注册中心及类加载等信息。
+ * 插件运行上下文，聚合四层能力模型。
+ *
  * <p>插件通过此上下文与平台交互，禁止直接获取 PluginManager。</p>
+ *
+ * <p>四层模型：</p>
+ * <ul>
+ *   <li>PluginInfo: 静态元数据（描述符、类加载器、物理路径）</li>
+ *   <li>PluginRuntime: 运行时状态访问（状态查询）</li>
+ *   <li>PluginWorkspace: 运行时工作空间（配置、数据、缓存、日志目录管理）</li>
+ *   <li>PlatformAccess: 平台能力访问（扩展注册、事件发布）</li>
+ * </ul>
+ *
+ * <p>
+ * 其中 workspace 表示插件运行期间使用的工作空间，
+ * 用于存储插件配置、运行数据、缓存以及日志等信息，采用懒加载机制按需创建。
+ * </p>
  */
 public final class PluginContext {
 
-    /**
-     * 插件描述信息。
-     */
-    private final PluginDescriptor descriptor;
-
-    /**
-     * 平台级扩展注册中心，插件可通过它注册或获取扩展点实现。
-     */
-    private final ExtensionRegistry extensionRegistry;
-
-    /**
-     * 插件专属类加载器，用于隔离插件依赖。
-     */
-    private final ClassLoader classLoader;
-
-    /**
-     * 插件来源，包含类型、路径等信息。
-     */
-    private final PluginSource source;
-
-    /**
-     * 事件发布者，插件可通过它发布事件。
-     */
-    private final EventPublisher eventPublisher;
-
-    /**
-     * 当前运行模式（开发/生产）。
-     */
-    private final RuntimeMode runtimeMode;
-
-    /**
-     * 平台核心版本号。
-     */
-    private final String coreVersion;
+    private final PluginInfo info;
+    private final PluginRuntime runtime;
+    private final PluginWorkspace workspace;
+    private final PlatformAccess platform;
 
     /**
      * 构造插件上下文。
      *
-     * @param descriptor        插件描述信息
-     * @param extensionRegistry 扩展注册中心
-     * @param classLoader       插件类加载器
-     * @param source            插件来源
-     * @param eventPublisher    事件发布者
-     * @param runtimeMode       运行模式
-     * @param coreVersion       核心版本号
+     * @param info      插件静态信息
+     * @param runtime   插件运行时状态
+     * @param workspace 插件运行时工作空间
+     * @param platform  平台能力访问
      */
-    public PluginContext(PluginDescriptor descriptor,
-                         ExtensionRegistry extensionRegistry,
-                         ClassLoader classLoader,
-                         PluginSource source,
-                         EventPublisher eventPublisher,
-                         RuntimeMode runtimeMode,
-                         String coreVersion) {
-        this.descriptor = descriptor;
-        this.extensionRegistry = extensionRegistry;
-        this.classLoader = classLoader;
-        this.source = source;
-        this.eventPublisher = eventPublisher;
-        this.runtimeMode = runtimeMode;
-        this.coreVersion = coreVersion;
+    public PluginContext(PluginInfo info, PluginRuntime runtime, PluginWorkspace workspace, PlatformAccess platform) {
+        this.info = Objects.requireNonNull(info, "插件信息不能为空");
+        this.runtime = Objects.requireNonNull(runtime, "插件运行时不能为空");
+        this.workspace = Objects.requireNonNull(workspace, "插件工作空间不能为空");
+        this.platform = Objects.requireNonNull(platform, "平台访问不能为空");
     }
 
     /**
-     * 获取插件描述信息。
+     * 获取插件静态信息。
      *
-     * @return 插件描述
+     * @return 插件信息
      */
-    public PluginDescriptor descriptor() {
-        return descriptor;
+    public PluginInfo info() {
+        return info;
     }
 
     /**
-     * 获取扩展注册中心。
+     * 获取插件运行时状态访问。
      *
-     * @return 扩展注册中心
+     * @return 插件运行时
      */
-    public ExtensionRegistry extensionRegistry() {
-        return extensionRegistry;
+    public PluginRuntime runtime() {
+        return runtime;
     }
 
     /**
-     * 获取插件类加载器。
+     * 获取插件运行时工作空间。
      *
-     * @return 类加载器
+     * @return 插件工作空间
      */
-    public ClassLoader classLoader() {
-        return classLoader;
+    public PluginWorkspace workspace() {
+        return workspace;
     }
 
     /**
-     * 获取插件来源类型
+     * 获取平台能力访问。
      *
-     * @return 插件来源类型
+     * @return 平台访问
      */
-    public SourceType sourceType() {
-        return source.getType();
-    }
-
-    /**
-     * 获取插件物理路径。
-     *
-     * @return 插件物理路径，可能为 null
-     */
-    public Path physicalPath() {
-        return source.getPhysicalPath();
-    }
-
-    /**
-     * 获取事件发布者。
-     *
-     * @return 事件发布者
-     */
-    public EventPublisher eventPublisher() {
-        return eventPublisher;
-    }
-
-    /**
-     * 获取平台核心版本号。
-     *
-     * @return 核心版本号
-     */
-    public String coreVersion() {
-        return coreVersion;
-    }
-
-    /**
-     * 获取当前运行模式。
-     *
-     * @return 运行模式
-     */
-    public RuntimeMode runtimeMode() {
-        return runtimeMode;
-    }
-
-    /**
-     * 检查当前是否为开发模式。
-     *
-     * @return 如果是开发模式返回 true
-     */
-    public boolean isDevelopment() {
-        return runtimeMode == RuntimeMode.DEVELOPMENT;
-    }
-
-    /**
-     * 检查当前是否为部署模式（生产模式）。
-     *
-     * @return 如果是部署模式返回 true
-     */
-    public boolean isDeployment() {
-        return runtimeMode == RuntimeMode.DEPLOYMENT;
+    public PlatformAccess platform() {
+        return platform;
     }
 }
