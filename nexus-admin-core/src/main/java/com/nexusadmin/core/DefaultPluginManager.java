@@ -1,5 +1,13 @@
 package com.nexusadmin.core;
 
+import com.nexusadmin.core.config.DefaultConfigManager;
+import com.nexusadmin.core.config.resolver.ConfigResolver;
+import com.nexusadmin.core.config.schema.SchemaRegistry;
+import com.nexusadmin.core.config.resolver.DefaultConfigSource;
+import com.nexusadmin.core.config.resolver.EnvConfigSource;
+import com.nexusadmin.core.config.resolver.FileConfigSource;
+import com.nexusadmin.core.config.store.ConfigStore;
+import com.nexusadmin.core.config.store.FileConfigStore;
 import com.nexusadmin.core.event.EventBus;
 import com.nexusadmin.core.extension.ExtensionRegistry;
 import com.nexusadmin.core.plugin.RuntimeMode;
@@ -18,6 +26,8 @@ import com.nexusadmin.core.plugin.resolve.DefaultPluginResolver;
 import com.nexusadmin.core.plugin.resolve.DependenceManager;
 import com.nexusadmin.core.plugin.resolve.PluginResolver;
 import com.nexusadmin.core.plugin.resolve.VersionManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.util.Collection;
@@ -28,6 +38,8 @@ import java.util.List;
  * <p>继承 {@link AbstractPluginManager}，负责策略组件的组装与生命周期管理。</p>
  */
 public class DefaultPluginManager extends AbstractPluginManager {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultPluginManager.class);
 
     private final List<PluginSource> sources;
     private final List<PluginDescriptorFinder> finders;
@@ -76,7 +88,41 @@ public class DefaultPluginManager extends AbstractPluginManager {
         this.dependenceManager = dependenceManager;
         this.pluginLoader = pluginLoader;
         this.autoStart = autoStart;
+
+        // 初始化配置中心组件
+        initializeConfigComponents();
+
         initializeComponents();
+    }
+
+    /**
+     * 初始化配置中心组件。
+     */
+    private void initializeConfigComponents() {
+        // 创建配置目录
+        Path configDir = pluginsDataRoot.resolve("config");
+
+        // 创建配置存储（SPI）
+        ConfigStore configStore = new FileConfigStore(configDir);
+
+        // 创建 Schema 注册中心
+        SchemaRegistry schemaRegistry = new SchemaRegistry();
+
+        // 创建配置解析器
+        ConfigResolver resolver = new ConfigResolver();
+
+        // 注册配置源
+        resolver.addSource(new EnvConfigSource());
+        resolver.addSource(new FileConfigSource(configDir));
+        resolver.addSource(new DefaultConfigSource(pluginId -> {
+            PluginWrapper wrapper = pluginRegistry.get(pluginId);
+            return wrapper != null ? wrapper.classLoader() : null;
+        }));
+
+        // 创建配置管理器
+        this.configManager = new DefaultConfigManager(resolver, schemaRegistry, configStore, eventBus);
+
+        log.debug("配置中心组件已初始化");
     }
 
     @Override
@@ -133,10 +179,20 @@ public class DefaultPluginManager extends AbstractPluginManager {
         if (!autoStart) {
             return;
         }
+
         for (PluginWrapper wrapper : list()) {
+            String pluginId = wrapper.getPluginId();
+
+            // 如果插件在禁用列表中，设置为 DISABLED 状态并跳过
+            if (configManager != null && configManager.isPluginDisabled(pluginId)) {
+                wrapper.state(PluginState.DISABLED);
+                log.debug("插件 {} 已被禁用，跳过启动", pluginId);
+                continue;
+            }
+
             if (wrapper.descriptor().hasEntryPoint() && wrapper.state() == PluginState.INITIALIZED) {
                 try {
-                    start(wrapper.getPluginId());
+                    start(pluginId);
                 } catch (Exception ex) {
                     // 启动失败已在事件监听器中记录
                 }

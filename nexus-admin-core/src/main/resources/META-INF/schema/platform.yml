@@ -1,0 +1,20 @@
+pluginId: platform
+properties:
+  coreVersion:
+    type: string
+    title: 核心版本
+    description: 平台核心版本号，只读展示
+    default: "1.0.0"
+  maxConcurrentPlugins:
+    type: integer
+    title: 最大并发插件数
+    description: 平台允许同时运行的插件数量上限
+    default: 50
+    minimum: 1
+    maximum: 500
+  logLevel:
+    type: enum
+    title: 日志级别
+    description: 平台全局日志级别
+    enum: [DEBUG, INFO, WARN, ERROR]
+    default: INFO

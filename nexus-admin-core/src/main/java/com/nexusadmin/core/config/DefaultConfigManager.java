@@ -1,0 +1,400 @@
+package com.nexusadmin.core.config;
+
+import com.nexusadmin.core.config.binder.ConfigUIBuilder;
+import com.nexusadmin.core.config.event.ConfigChangedEvent;
+import com.nexusadmin.core.config.event.ConfigListener;
+import com.nexusadmin.core.config.resolver.ConfigResolver;
+import com.nexusadmin.core.config.resolver.ConfigSource;
+import com.nexusadmin.core.config.schema.ConfigSchema;
+import com.nexusadmin.core.config.schema.PlatformSchemaProvider;
+import com.nexusadmin.core.config.schema.SchemaProvider;
+import com.nexusadmin.core.config.schema.SchemaRegistry;
+import com.nexusadmin.core.config.schema.YamlPluginSchemaProvider;
+import com.nexusadmin.core.config.store.ConfigStore;
+import com.nexusadmin.core.event.EventBus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+/**
+ * 默认配置管理器实现，配置中心的统一入口。
+ * <p>整合解析器、存储、Schema 注册中心，提供完整的配置管理能力。</p>
+ */
+public class DefaultConfigManager implements ConfigManager {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultConfigManager.class);
+
+    /**
+     * 配置解析器。
+     */
+    private final ConfigResolver resolver;
+
+    /**
+     * Schema 注册中心。
+     */
+    private final SchemaRegistry schemaRegistry;
+
+    /**
+     * 配置存储。
+     */
+    private final ConfigStore configStore;
+
+    /**
+     * 事件总线。
+     */
+    private final EventBus eventBus;
+
+    /**
+     * UI Schema 构建器。
+     */
+    private final ConfigUIBuilder uiBuilder;
+
+    /**
+     * Schema 提供者列表。
+     */
+    private final List<SchemaProvider> schemaProviders = new CopyOnWriteArrayList<>();
+
+    /**
+     * 配置监听器列表。
+     */
+    private final List<ConfigListener> listeners = new CopyOnWriteArrayList<>();
+
+    /**
+     * 插件类加载器缓存。
+     */
+    private final Map<String, ClassLoader> pluginClassLoaders = new ConcurrentHashMap<>();
+
+    /**
+     * 构造默认配置管理器。
+     *
+     * @param resolver       配置解析器
+     * @param schemaRegistry Schema 注册中心
+     * @param configStore    配置存储
+     * @param eventBus       事件总线
+     */
+    public DefaultConfigManager(ConfigResolver resolver,
+                                SchemaRegistry schemaRegistry,
+                                ConfigStore configStore,
+                                EventBus eventBus) {
+        this.resolver = Objects.requireNonNull(resolver, "配置解析器不能为空");
+        this.schemaRegistry = Objects.requireNonNull(schemaRegistry, "Schema 注册中心不能为空");
+        this.configStore = Objects.requireNonNull(configStore, "配置存储不能为空");
+        this.eventBus = Objects.requireNonNull(eventBus, "事件总线不能为空");
+        this.uiBuilder = new ConfigUIBuilder(schemaRegistry);
+
+        // 注册默认 Schema 提供者
+        registerSchemaProvider(new YamlPluginSchemaProvider());
+        registerSchemaProvider(new PlatformSchemaProvider());
+
+        log.info("配置管理器已初始化");
+    }
+
+    @Override
+    public Optional<String> get(String scope, String key) {
+        return resolver.resolve(scope, key);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> Optional<T> get(String scope, String key, Class<T> type) {
+        Optional<String> value = get(scope, key);
+        if (value.isEmpty()) {
+            return Optional.empty();
+        }
+
+        String strValue = value.get();
+        try {
+            Object result = convertValue(strValue, type);
+            return Optional.ofNullable((T) result);
+        } catch (Exception e) {
+            log.warn("配置值转换失败: {}.{} = {} to {}", scope, key, strValue, type.getSimpleName());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public void set(String scope, String key, String value) {
+        Objects.requireNonNull(scope, "作用域不能为空");
+        Objects.requireNonNull(key, "键名不能为空");
+
+        // 获取旧值
+        String oldValue = get(scope, key).orElse(null);
+
+        // 写入存储
+        configStore.set(scope, key, value);
+
+        // 使解析器缓存失效
+        resolver.invalidateCache(scope);
+
+        // 发布事件
+        ConfigChangedEvent event = new ConfigChangedEvent(scope, key, value, oldValue);
+        eventBus.publish(event);
+
+        // 通知监听器
+        notifyListeners(event);
+
+        log.debug("配置已更新: {}.{} = {} (旧值: {})", scope, key, value, oldValue);
+    }
+
+    @Override
+    public void set(String scope, String key, Object value) {
+        if (value == null) {
+            remove(scope, key);
+            return;
+        }
+        set(scope, key, value.toString());
+    }
+
+    @Override
+    public boolean exists(String scope, String key) {
+        return get(scope, key).isPresent();
+    }
+
+    @Override
+    public void remove(String scope, String key) {
+        Objects.requireNonNull(scope, "作用域不能为空");
+        Objects.requireNonNull(key, "键名不能为空");
+
+        // 获取旧值
+        String oldValue = get(scope, key).orElse(null);
+
+        // 从存储中删除
+        configStore.remove(scope, key);
+
+        // 使解析器缓存失效
+        resolver.invalidateCache(scope);
+
+        // 发布事件
+        ConfigChangedEvent event = new ConfigChangedEvent(scope, key, null, oldValue);
+        eventBus.publish(event);
+
+        // 通知监听器
+        notifyListeners(event);
+
+        log.debug("配置已删除: {}.{} (旧值: {})", scope, key, oldValue);
+    }
+
+    @Override
+    public Optional<ConfigSchema> getSchema(String schemaId) {
+        return schemaRegistry.get(schemaId);
+    }
+
+    @Override
+    public Map<String, Object> buildUISchema(String schemaId) {
+        return uiBuilder.build(schemaId);
+    }
+
+    @Override
+    public void registerPlugin(String pluginId, ClassLoader classLoader) {
+        Objects.requireNonNull(pluginId, "插件ID不能为空");
+
+        // 缓存类加载器
+        if (classLoader != null) {
+            pluginClassLoaders.put(pluginId, classLoader);
+        }
+
+        // 加载并注册 Schema
+        for (SchemaProvider provider : schemaProviders) {
+            try {
+                Optional<ConfigSchema> schema = provider.load(pluginId, classLoader);
+                if (schema.isPresent()) {
+                    schemaRegistry.register(pluginId, schema.get());
+                    break; // 使用第一个成功加载的提供者
+                }
+            } catch (Exception e) {
+                log.warn("Schema 提供者 {} 加载失败: {}", provider.name(), pluginId, e);
+            }
+        }
+
+        log.debug("插件配置已注册: {}", pluginId);
+    }
+
+    @Override
+    public void unregisterPlugin(String pluginId) {
+        schemaRegistry.unregister(pluginId);
+        pluginClassLoaders.remove(pluginId);
+        log.debug("插件配置已注销: {}", pluginId);
+    }
+
+    /**
+     * 禁用插件配置作用域。
+     */
+    private static final String DISABLED_SCOPE = "platform.disabled";
+
+    /**
+     * 禁用插件列表键名。
+     */
+    private static final String DISABLED_PLUGINS_KEY = "disabled-plugins";
+
+    @Override
+    public boolean isPluginDisabled(String pluginId) {
+        java.util.List<String> disabledList = getDisabledPluginsList();
+        return disabledList.contains(pluginId);
+    }
+
+    @Override
+    public void setPluginDisabled(String pluginId, boolean disabled) {
+        java.util.Set<String> disabledSet = new java.util.LinkedHashSet<>(getDisabledPluginsList());
+
+        if (disabled) {
+            disabledSet.add(pluginId);
+        } else {
+            disabledSet.remove(pluginId);
+        }
+
+        // 存储为 YAML 列表格式
+        configStore.set(DISABLED_SCOPE, DISABLED_PLUGINS_KEY, new java.util.ArrayList<>(disabledSet));
+        resolver.invalidateCache(DISABLED_SCOPE);
+
+        log.debug("插件禁用状态已更新: {} = {}", pluginId, disabled);
+    }
+
+    /**
+     * 获取禁用插件列表。
+     *
+     * @return 禁用插件ID列表
+     */
+    @SuppressWarnings("unchecked")
+    private java.util.List<String> getDisabledPluginsList() {
+        Map<String, Object> config = configStore.getScope(DISABLED_SCOPE);
+        Object value = config.get(DISABLED_PLUGINS_KEY);
+
+        if (value instanceof java.util.List<?> list) {
+            return list.stream()
+                    .map(Object::toString)
+                    .toList();
+        }
+
+        return java.util.Collections.emptyList();
+    }
+
+    @Override
+    public void addListener(ConfigListener listener) {
+        Objects.requireNonNull(listener, "监听器不能为空");
+        listeners.add(listener);
+        log.debug("已添加配置监听器: {}", listener.getClass().getSimpleName());
+    }
+
+    @Override
+    public void removeListener(ConfigListener listener) {
+        listeners.remove(listener);
+        log.debug("已移除配置监听器: {}", listener.getClass().getSimpleName());
+    }
+
+    /**
+     * 注册配置源。
+     *
+     * @param source 配置源
+     */
+    public void registerSource(ConfigSource source) {
+        resolver.addSource(source);
+    }
+
+    /**
+     * 注册 Schema 提供者。
+     *
+     * @param provider Schema 提供者
+     */
+    public void registerSchemaProvider(SchemaProvider provider) {
+        schemaProviders.add(provider);
+        schemaProviders.sort(java.util.Comparator.comparingInt(SchemaProvider::priority));
+        log.debug("已注册 Schema 提供者: {}", provider.name());
+    }
+
+    /**
+     * 获取插件类加载器。
+     *
+     * @param pluginId 插件ID
+     * @return 类加载器，可能为 null
+     */
+    public ClassLoader getPluginClassLoader(String pluginId) {
+        return pluginClassLoaders.get(pluginId);
+    }
+
+    /**
+     * 通知所有监听器。
+     *
+     * @param event 配置变更事件
+     */
+    private void notifyListeners(ConfigChangedEvent event) {
+        for (ConfigListener listener : listeners) {
+            try {
+                String interestedScope = listener.interestedScope();
+                if (interestedScope == null || interestedScope.isEmpty()
+                        || event.scope().startsWith(interestedScope)) {
+                    listener.onConfigChanged(event);
+                }
+            } catch (Exception e) {
+                log.warn("配置监听器处理失败: {}", listener.getClass().getName(), e);
+            }
+        }
+    }
+
+    /**
+     * 转换配置值到目标类型。
+     *
+     * @param value 字符串值
+     * @param type  目标类型
+     * @return 转换后的值
+     */
+    private Object convertValue(String value, Class<?> type) {
+        if (type == String.class) {
+            return value;
+        }
+        if (type == Integer.class || type == int.class) {
+            return Integer.parseInt(value);
+        }
+        if (type == Long.class || type == long.class) {
+            return Long.parseLong(value);
+        }
+        if (type == Boolean.class || type == boolean.class) {
+            return Boolean.parseBoolean(value);
+        }
+        if (type == Double.class || type == double.class) {
+            return Double.parseDouble(value);
+        }
+        if (type == Float.class || type == float.class) {
+            return Float.parseFloat(value);
+        }
+        if (type.isEnum()) {
+            @SuppressWarnings({"rawtypes", "unchecked"})
+            Enum enumValue = Enum.valueOf((Class<Enum>) type, value);
+            return enumValue;
+        }
+        throw new IllegalArgumentException("不支持的类型转换: " + type.getName());
+    }
+
+    /**
+     * 获取配置解析器。
+     *
+     * @return 配置解析器
+     */
+    public ConfigResolver getResolver() {
+        return resolver;
+    }
+
+    /**
+     * 获取 Schema 注册中心。
+     *
+     * @return Schema 注册中心
+     */
+    public SchemaRegistry getSchemaRegistry() {
+        return schemaRegistry;
+    }
+
+    /**
+     * 获取配置存储。
+     *
+     * @return 配置存储
+     */
+    public ConfigStore getConfigStore() {
+        return configStore;
+    }
+}
+

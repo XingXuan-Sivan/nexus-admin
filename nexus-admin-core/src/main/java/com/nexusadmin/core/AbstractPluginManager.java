@@ -1,5 +1,6 @@
 package com.nexusadmin.core;
 
+import com.nexusadmin.core.config.ConfigManager;
 import com.nexusadmin.core.context.PlatformAccess;
 import com.nexusadmin.core.context.PluginContext;
 import com.nexusadmin.core.context.PluginInfo;
@@ -47,6 +48,9 @@ public abstract class AbstractPluginManager implements PluginManager {
     protected PluginDiscoverer pluginDiscoverer;
     protected PluginResolver pluginResolver;
     protected PluginLoader pluginLoader;
+
+    // ===== 配置中心相关 =====
+    protected ConfigManager configManager;
 
     /**
      * 插件上下文缓存，用于生命周期方法调用。
@@ -140,7 +144,8 @@ public abstract class AbstractPluginManager implements PluginManager {
                 extensionRegistry,
                 eventBus::publish,
                 runtimeMode,
-                coreVersion
+                coreVersion,
+                configManager
         );
 
         return new PluginContext(info, runtime, workspace, platform);
@@ -270,6 +275,10 @@ public abstract class AbstractPluginManager implements PluginManager {
                 PluginWrapper wrapper = pluginLoader.load(metadata);
                 transition(wrapper, PluginState.LOADED);
                 pluginRegistry.register(wrapper);
+
+                // 加载并注册 Schema
+                loadAndRegisterSchema(wrapper);
+
                 wrappers.add(wrapper);
             } catch (Exception e) {
                 log.error("插件加载失败: {} (来源类型: {})",
@@ -284,6 +293,25 @@ public abstract class AbstractPluginManager implements PluginManager {
                 wrappers.size()));
 
         return wrappers;
+    }
+
+    /**
+     * 加载并注册插件 Schema。
+     *
+     * @param wrapper 插件包装对象
+     */
+    protected void loadAndRegisterSchema(PluginWrapper wrapper) {
+        if (configManager == null) {
+            return;
+        }
+
+        try {
+            String pluginId = wrapper.getPluginId();
+            ClassLoader classLoader = wrapper.classLoader();
+            configManager.registerPlugin(pluginId, classLoader);
+        } catch (Exception e) {
+            log.warn("加载插件 Schema 失败: {}", wrapper.getPluginId(), e);
+        }
     }
 
     @Override
@@ -445,6 +473,11 @@ public abstract class AbstractPluginManager implements PluginManager {
 
         transition(wrapper, PluginState.STARTING);
 
+        // 移除禁用状态持久化
+        if (configManager != null) {
+            configManager.setPluginDisabled(pluginId, false);
+        }
+
         Plugin plugin = wrapper.plugin();
         if (plugin != null) {
             try {
@@ -469,6 +502,11 @@ public abstract class AbstractPluginManager implements PluginManager {
         }
 
         transition(wrapper, PluginState.DISABLED);
+
+        // 持久化禁用状态
+        if (configManager != null) {
+            configManager.setPluginDisabled(pluginId, true);
+        }
 
         Plugin plugin = wrapper.plugin();
         if (plugin != null) {

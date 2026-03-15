@@ -1,14 +1,16 @@
 package com.nexusadmin.core.context;
 
+import com.nexusadmin.core.config.ConfigManager;
 import com.nexusadmin.core.event.EventPublisher;
 import com.nexusadmin.core.extension.ExtensionRegistry;
 import com.nexusadmin.core.plugin.RuntimeMode;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * 平台能力访问接口，提供插件与平台交互的统一入口。
- * <p>通过此接口插件可以访问扩展注册中心、事件发布等核心能力。</p>
+ * <p>通过此接口插件可以访问扩展注册中心、事件发布、配置服务等核心能力。</p>
  */
 public final class PlatformAccess {
 
@@ -16,6 +18,7 @@ public final class PlatformAccess {
     private final EventPublisher eventPublisher;
     private final RuntimeMode runtimeMode;
     private final String coreVersion;
+    private final ConfigManager configManager;
 
     /**
      * 构造平台访问对象。
@@ -24,15 +27,18 @@ public final class PlatformAccess {
      * @param eventPublisher    事件发布者
      * @param runtimeMode       运行模式
      * @param coreVersion       核心版本号
+     * @param configManager     配置管理器
      */
     public PlatformAccess(ExtensionRegistry extensionRegistry,
                           EventPublisher eventPublisher,
                           RuntimeMode runtimeMode,
-                          String coreVersion) {
+                          String coreVersion,
+                          ConfigManager configManager) {
         this.extensionRegistry = Objects.requireNonNull(extensionRegistry, "扩展注册中心不能为空");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "事件发布者不能为空");
         this.runtimeMode = Objects.requireNonNull(runtimeMode, "运行模式不能为空");
         this.coreVersion = Objects.requireNonNull(coreVersion, "核心版本号不能为空");
+        this.configManager = configManager;
     }
 
     /**
@@ -87,5 +93,23 @@ public final class PlatformAccess {
      */
     public boolean isDeployment() {
         return runtimeMode == RuntimeMode.DEPLOYMENT;
+    }
+
+    /**
+     * 获取配置管理器。
+     *
+     * @return 配置管理器，如果未配置可能返回 null
+     */
+    public ConfigManager config() {
+        return configManager;
+    }
+
+    /**
+     * 获取配置管理器（可选形式）。
+     *
+     * @return 配置管理器 Optional
+     */
+    public Optional<ConfigManager> configOpt() {
+        return Optional.ofNullable(configManager);
     }
 }
