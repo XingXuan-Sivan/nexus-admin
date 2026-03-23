@@ -1,6 +1,7 @@
 package com.nexusadmin.app.listener;
 
 import com.nexusadmin.core.event.EventBus;
+import com.nexusadmin.core.event.EventScopeMatcher;
 import com.nexusadmin.core.PluginState;
 import com.nexusadmin.core.plugin.event.PluginStateChangedEvent;
 import com.nexusadmin.core.plugin.event.PluginProcessEvent;
@@ -43,13 +44,38 @@ public class PluginLifecycleLogger {
 
     /**
      * 初始化时订阅生命周期事件。
+     * <p>订阅平台作用域的所有插件生命周期事件，用于日志记录和监控。</p>
      */
     @PostConstruct
     public void init() {
-        eventBus.subscribe(PluginStateChangedEvent.class, this::onStateChanged);
-        eventBus.subscribe(PluginProcessEvent.class, this::onProcess);
-        eventBus.subscribe(PluginUpgradeEvent.class, this::onUpgrade);
-        eventBus.subscribe(PluginFailureEvent.class, this::onFailure);
+        // 订阅平台作用域的插件状态变更事件
+        eventBus.subscribe(
+                PluginStateChangedEvent.class,
+                this::onStateChanged,
+                EventScopeMatcher.platform(),
+                null
+        );
+        // 订阅平台作用域的插件处理阶段事件
+        eventBus.subscribe(
+                PluginProcessEvent.class,
+                this::onProcess,
+                EventScopeMatcher.platform(),
+                null
+        );
+        // 订阅平台作用域的插件升级事件
+        eventBus.subscribe(
+                PluginUpgradeEvent.class,
+                this::onUpgrade,
+                EventScopeMatcher.platform(),
+                null
+        );
+        // 订阅平台作用域的插件失败事件
+        eventBus.subscribe(
+                PluginFailureEvent.class,
+                this::onFailure,
+                EventScopeMatcher.platform(),
+                null
+        );
     }
 
     /**

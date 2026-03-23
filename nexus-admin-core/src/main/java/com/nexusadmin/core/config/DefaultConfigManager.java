@@ -327,7 +327,7 @@ public class DefaultConfigManager implements ConfigManager {
             try {
                 String interestedScope = listener.interestedScope();
                 if (interestedScope == null || interestedScope.isEmpty()
-                        || event.scope().startsWith(interestedScope)) {
+                        || event.configScope().startsWith(interestedScope)) {
                     listener.onConfigChanged(event);
                 }
             } catch (Exception e) {

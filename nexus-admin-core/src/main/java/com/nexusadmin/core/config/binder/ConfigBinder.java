@@ -172,7 +172,7 @@ public class ConfigBinder {
         @Override
         public void onConfigChanged(ConfigChangedEvent event) {
             // 监听该 scope 及其子键的变更
-            if (scope.equals(event.scope()) || event.scope().startsWith(scope + ".")) {
+            if (scope.equals(event.configScope()) || event.configScope().startsWith(scope + ".")) {
                 rebind(scope);
             }
         }
