@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.log;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.api.domain.log.LogEntry;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
@@ -16,10 +16,10 @@ public interface LogRetentionPolicy extends ExtensionPoint {
      * 决定某条日志的保留策略。
      *
      * @param request 保留决策请求
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return 保留决策结果
      */
-    RetentionDecision decide(LogRetentionRequest request, CoreContext context);
+    RetentionDecision decide(LogRetentionRequest request, InvocationContext context);
 
     /**
      * 日志保留决策请求。

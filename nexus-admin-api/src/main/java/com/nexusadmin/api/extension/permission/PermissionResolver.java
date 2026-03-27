@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.permission;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.api.domain.identity.Permission;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
@@ -18,19 +18,19 @@ public interface PermissionResolver extends ExtensionPoint {
      * 解析用户拥有的所有权限。
      *
      * @param userId  用户 ID
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return 用户权限集合
      */
-    Set<Permission> resolvePermissions(String userId, CoreContext context);
+    Set<Permission> resolvePermissions(String userId, InvocationContext context);
 
     /**
      * 决定某次访问请求是否允许。
      *
      * @param check   权限检查请求
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return 授权决策结果
      */
-    PermissionDecision decide(PermissionCheck check, CoreContext context);
+    PermissionDecision decide(PermissionCheck check, InvocationContext context);
 
     /**
      * 权限检查请求。

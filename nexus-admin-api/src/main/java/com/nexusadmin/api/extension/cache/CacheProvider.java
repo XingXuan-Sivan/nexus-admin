@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.cache;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
@@ -17,27 +17,27 @@ public interface CacheProvider extends ExtensionPoint {
      * 从缓存中读取数据。
      *
      * @param key     缓存键
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return 缓存值，可为空
      */
-    Optional<CacheValue> get(CacheKey key, CoreContext context);
+    Optional<CacheValue> get(CacheKey key, InvocationContext context);
 
     /**
      * 向缓存写入数据。
      *
      * @param key     缓存键
      * @param value   缓存值
-     * @param context 平台上下文
+     * @param context 调用上下文
      */
-    void put(CacheKey key, CacheValue value, CoreContext context);
+    void put(CacheKey key, CacheValue value, InvocationContext context);
 
     /**
      * 从缓存中删除数据。
      *
      * @param key     缓存键
-     * @param context 平台上下文
+     * @param context 调用上下文
      */
-    void evict(CacheKey key, CoreContext context);
+    void evict(CacheKey key, InvocationContext context);
 
     /**
      * 缓存键。

@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.auth;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
@@ -13,13 +13,13 @@ import java.util.Map;
 public interface AuthProvider extends ExtensionPoint {
 
     /**
-     * 执行认证逻辑，根据请求和平台上下文返回认证结果。
+     * 执行认证逻辑，根据请求和调用上下文返回认证结果。
      *
      * @param request 认证请求
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return 认证结果
      */
-    AuthResult authenticate(AuthRequest request, CoreContext context);
+    AuthResult authenticate(AuthRequest request, InvocationContext context);
 
     /**
      * 构造认证请求参数。

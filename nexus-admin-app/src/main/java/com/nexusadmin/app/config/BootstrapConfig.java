@@ -1,5 +1,6 @@
 package com.nexusadmin.app.config;
 
+import com.nexusadmin.api.management.AdminFacade;
 import com.nexusadmin.app.config.properties.PlatformProperties;
 import com.nexusadmin.core.DefaultPluginManager;
 import com.nexusadmin.core.PluginManager;
@@ -210,5 +211,45 @@ public class BootstrapConfig {
                 pluginLoader,
                 properties.getPlugin().isAutoStart()
         );
+    }
+
+    // ==================== 配置管理器初始化 ====================
+
+    /**
+     * 配置管理器。
+     * <p>
+     * 从 DefaultPluginManager 中获取配置管理器实例。
+     *
+     * @param pluginManager 插件管理器
+     * @return ConfigManager 实例，如果不可用则返回 null
+     */
+    @Bean
+    public com.nexusadmin.core.config.ConfigManager configManager(PluginManager pluginManager) {
+        if (pluginManager instanceof DefaultPluginManager dpm) {
+            return dpm.configManager();
+        }
+        return null;
+    }
+
+    // ==================== 管理门面初始化 ====================
+
+    /**
+     * 管理门面。
+     *
+     * @param pluginManager 插件管理器
+     * @param configManager 配置管理器
+     * @return AdminFacade 实例
+     */
+    @Bean
+    public AdminFacade adminFacade(PluginManager pluginManager,
+                                    com.nexusadmin.core.config.ConfigManager configManager) {
+        AdminFacade facade = new AdminFacadeImpl(pluginManager, configManager);
+
+        // 将 AdminFacade 设置到 PluginManager
+        if (pluginManager instanceof DefaultPluginManager dpm) {
+            dpm.setAdminFacade(facade);
+        }
+
+        return facade;
     }
 }

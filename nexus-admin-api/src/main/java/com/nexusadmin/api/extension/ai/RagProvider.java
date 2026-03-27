@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.ai;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
@@ -17,10 +17,10 @@ public interface RagProvider extends ExtensionPoint {
      * 执行 RAG 检索，根据查询请求和上下文返回相关文档及摘要。
      *
      * @param request RAG 请求
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return RAG 响应
      */
-    RagResponse retrieve(RagRequest request, CoreContext context);
+    RagResponse retrieve(RagRequest request, InvocationContext context);
 
     /**
      * 构造 RAG 检索请求参数。

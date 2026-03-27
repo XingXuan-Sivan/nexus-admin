@@ -209,4 +209,13 @@ public class DefaultPluginManager extends AbstractPluginManager {
     public Collection<PluginWrapper> list() {
         return pluginRegistry.list();
     }
+
+    /**
+     * 获取配置管理器。
+     *
+     * @return 配置管理器，可能为 null
+     */
+    public com.nexusadmin.core.config.ConfigManager configManager() {
+        return configManager;
+    }
 }

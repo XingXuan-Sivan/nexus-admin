@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.ai;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
@@ -16,10 +16,10 @@ public interface AgentPolicy extends ExtensionPoint {
      * 根据请求决定是否允许 Agent 运行。
      *
      * @param request Agent 决策请求
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return Agent 决策结果
      */
-    AgentDecision decide(AgentRequest request, CoreContext context);
+    AgentDecision decide(AgentRequest request, InvocationContext context);
 
     /**
      * Agent 决策结果记录

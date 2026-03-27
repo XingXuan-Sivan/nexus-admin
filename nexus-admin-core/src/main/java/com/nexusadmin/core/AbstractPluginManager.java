@@ -52,6 +52,9 @@ public abstract class AbstractPluginManager implements PluginManager {
     // ===== 配置中心相关 =====
     protected ConfigManager configManager;
 
+    // ===== 管理门面相关 =====
+    protected Object adminFacade;
+
     /**
      * 插件上下文缓存，用于生命周期方法调用。
      */
@@ -145,7 +148,8 @@ public abstract class AbstractPluginManager implements PluginManager {
                 eventBus::publish,
                 runtimeMode,
                 coreVersion,
-                configManager
+                configManager,
+                adminFacade
         );
 
         return new PluginContext(info, runtime, workspace, platform);
@@ -618,5 +622,14 @@ public abstract class AbstractPluginManager implements PluginManager {
                 // 忽略关闭异常
             }
         }
+    }
+
+    /**
+     * 设置管理门面。
+     *
+     * @param adminFacade 管理门面实例
+     */
+    public void setAdminFacade(Object adminFacade) {
+        this.adminFacade = adminFacade;
     }
 }

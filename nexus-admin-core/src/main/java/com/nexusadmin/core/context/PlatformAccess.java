@@ -19,6 +19,7 @@ public final class PlatformAccess {
     private final RuntimeMode runtimeMode;
     private final String coreVersion;
     private final ConfigManager configManager;
+    private final Object adminFacade;
 
     /**
      * 构造平台访问对象。
@@ -34,11 +35,31 @@ public final class PlatformAccess {
                           RuntimeMode runtimeMode,
                           String coreVersion,
                           ConfigManager configManager) {
+        this(extensionRegistry, eventPublisher, runtimeMode, coreVersion, configManager, null);
+    }
+
+    /**
+     * 构造平台访问对象。
+     *
+     * @param extensionRegistry 扩展注册中心
+     * @param eventPublisher    事件发布者
+     * @param runtimeMode       运行模式
+     * @param coreVersion       核心版本号
+     * @param configManager     配置管理器
+     * @param adminFacade       管理门面
+     */
+    public PlatformAccess(ExtensionRegistry extensionRegistry,
+                          EventPublisher eventPublisher,
+                          RuntimeMode runtimeMode,
+                          String coreVersion,
+                          ConfigManager configManager,
+                          Object adminFacade) {
         this.extensionRegistry = Objects.requireNonNull(extensionRegistry, "扩展注册中心不能为空");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "事件发布者不能为空");
         this.runtimeMode = Objects.requireNonNull(runtimeMode, "运行模式不能为空");
         this.coreVersion = Objects.requireNonNull(coreVersion, "核心版本号不能为空");
         this.configManager = configManager;
+        this.adminFacade = adminFacade;
     }
 
     /**
@@ -111,5 +132,32 @@ public final class PlatformAccess {
      */
     public Optional<ConfigManager> configOpt() {
         return Optional.ofNullable(configManager);
+    }
+
+    /**
+     * 获取管理门面。
+     *
+     * @param <T> 管理门面类型
+     * @param type 管理门面类型
+     * @return 管理门面 Optional
+     */
+    @SuppressWarnings("unchecked")
+    public <T> Optional<T> adminFacade(Class<T> type) {
+        if (adminFacade == null) {
+            return Optional.empty();
+        }
+        if (type.isInstance(adminFacade)) {
+            return Optional.of((T) adminFacade);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * 获取管理门面（原始类型）。
+     *
+     * @return 管理门面，可能为 null
+     */
+    public Object adminFacade() {
+        return adminFacade;
     }
 }

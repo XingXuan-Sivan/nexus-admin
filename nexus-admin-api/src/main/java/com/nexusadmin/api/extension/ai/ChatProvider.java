@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.ai;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
@@ -16,10 +16,10 @@ public interface ChatProvider extends ExtensionPoint {
      * 执行一次对话请求，根据输入消息和上下文返回回复。
      *
      * @param request 对话请求
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return 对话响应
      */
-    ChatResponse chat(ChatRequest request, CoreContext context);
+    ChatResponse chat(ChatRequest request, InvocationContext context);
 
     /**
      * 构造对话请求参数。

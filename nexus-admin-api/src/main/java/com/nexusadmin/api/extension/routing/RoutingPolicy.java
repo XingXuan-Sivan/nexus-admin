@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.routing;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
@@ -16,10 +16,10 @@ public interface RoutingPolicy extends ExtensionPoint {
      * 根据路由请求决定目标路由。
      *
      * @param request 路由请求
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return 路由决策结果
      */
-    RouteDecision decide(RouteRequest request, CoreContext context);
+    RouteDecision decide(RouteRequest request, InvocationContext context);
 
     /**
      * 路由请求。

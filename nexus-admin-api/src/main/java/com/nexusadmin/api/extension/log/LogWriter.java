@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.log;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.api.domain.log.LogEntry;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
@@ -13,7 +13,7 @@ public interface LogWriter extends ExtensionPoint {
      * 写入一条日志到存储。
      *
      * @param entry   日志条目
-     * @param context 平台上下文
+     * @param context 调用上下文
      */
-    void write(LogEntry entry, CoreContext context);
+    void write(LogEntry entry, InvocationContext context);
 }

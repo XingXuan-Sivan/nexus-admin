@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.ai;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
@@ -16,10 +16,10 @@ public interface ToolExecutor extends ExtensionPoint {
      * 执行工具调用请求。
      *
      * @param call    工具调用请求
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return 工具执行结果
      */
-    ToolResult execute(ToolCall call, CoreContext context);
+    ToolResult execute(ToolCall call, InvocationContext context);
 
     /**
      * 工具调用请求记录

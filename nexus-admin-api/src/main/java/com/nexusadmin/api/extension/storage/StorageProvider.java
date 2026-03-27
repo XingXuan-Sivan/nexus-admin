@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.storage;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
@@ -17,26 +17,26 @@ public interface StorageProvider extends ExtensionPoint {
      * 保存对象到存储。
      *
      * @param object  存储对象
-     * @param context 平台上下文
+     * @param context 调用上下文
      */
-    void save(StorageObject object, CoreContext context);
+    void save(StorageObject object, InvocationContext context);
 
     /**
      * 从存储加载对象。
      *
      * @param key     存储键
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return 存储对象，可为空
      */
-    Optional<StorageObject> load(StorageKey key, CoreContext context);
+    Optional<StorageObject> load(StorageKey key, InvocationContext context);
 
     /**
      * 从存储删除对象。
      *
      * @param key     存储键
-     * @param context 平台上下文
+     * @param context 调用上下文
      */
-    void delete(StorageKey key, CoreContext context);
+    void delete(StorageKey key, InvocationContext context);
 
     /**
      * 存储键。

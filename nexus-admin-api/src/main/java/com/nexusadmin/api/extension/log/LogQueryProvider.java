@@ -1,6 +1,6 @@
 package com.nexusadmin.api.extension.log;
 
-import com.nexusadmin.api.context.CoreContext;
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.api.domain.log.LogEntry;
 import com.nexusadmin.api.domain.log.LogLevel;
 import com.nexusadmin.api.domain.log.LogType;
@@ -21,10 +21,10 @@ public interface LogQueryProvider extends ExtensionPoint {
      * 按查询条件检索日志记录。
      *
      * @param query   日志查询请求
-     * @param context 平台上下文
+     * @param context 调用上下文
      * @return 匹配的日志条目列表
      */
-    List<LogEntry> query(LogQuery query, CoreContext context);
+    List<LogEntry> query(LogQuery query, InvocationContext context);
 
     /**
      * 日志查询请求。
