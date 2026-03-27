@@ -1,4 +1,4 @@
-package com.nexusadmin.app.extension.web;
+package com.nexusadmin.app.web;
 
 import com.nexusadmin.api.extension.web.MappingResolver;
 import com.nexusadmin.api.extension.web.PluginWebRegistry;

@@ -1,9 +1,11 @@
 package com.nexusadmin.app.listener;
 
+import com.nexusadmin.api.extension.web.EnableWebEndpoints;
 import com.nexusadmin.api.extension.web.MappingResolver;
 import com.nexusadmin.api.extension.web.PluginWebRegistry;
 import com.nexusadmin.api.extension.web.WebControllerProvider;
 import com.nexusadmin.api.extension.web.WebEndpointExtension;
+import com.nexusadmin.api.extension.web.WebEndpointExtension.EndpointScanConfig;
 import com.nexusadmin.api.extension.web.WebEndpointRegistrar;
 import com.nexusadmin.core.PluginState;
 import com.nexusadmin.core.event.EventBus;
@@ -16,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -82,6 +85,7 @@ public class WebEndpointLifecycleListener {
 
         Object plugin = pluginWrapper.plugin();
         WebControllerProvider provider = (plugin instanceof WebControllerProvider p) ? p : null;
+        EndpointScanConfig scanConfig = buildScanConfig(plugin);
 
         WebEndpointExtension.Context ctx = new WebEndpointExtension.Context(
                 pluginId,
@@ -89,7 +93,8 @@ public class WebEndpointLifecycleListener {
                 provider,
                 registrar,
                 mappingResolver,
-                registry
+                registry,
+                scanConfig
         );
 
         List<WebEndpointExtension> extensions = extensionRegistry.getAll(WebEndpointExtension.class);
@@ -112,5 +117,39 @@ public class WebEndpointLifecycleListener {
             default -> {
             }
         }
+    }
+
+    /**
+     * 从插件主类构建 Web 端点自动扫描配置。
+     *
+     * @param plugin 插件实例
+     * @return 扫描配置，如果插件未启用自动扫描则返回禁用状态的配置
+     */
+    private EndpointScanConfig buildScanConfig(Object plugin) {
+        Class<?> pluginClass = plugin.getClass();
+        EnableWebEndpoints annotation = pluginClass.getAnnotation(EnableWebEndpoints.class);
+        if (annotation == null) {
+            return new EndpointScanConfig(false, new String[0]);
+        }
+
+        List<String> packages = new ArrayList<>();
+        for (String pkg : annotation.basePackages()) {
+            if (pkg != null && !pkg.isBlank()) {
+                packages.add(pkg);
+            }
+        }
+        for (Class<?> cls : annotation.basePackageClasses()) {
+            if (cls != null) {
+                String pkg = cls.getPackageName();
+                if (pkg != null && !pkg.isBlank()) {
+                    packages.add(pkg);
+                }
+            }
+        }
+        if (packages.isEmpty()) {
+            packages.add(pluginClass.getPackageName());
+        }
+
+        return new EndpointScanConfig(true, packages.toArray(String[]::new));
     }
 }

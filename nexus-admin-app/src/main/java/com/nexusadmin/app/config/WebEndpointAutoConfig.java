@@ -4,11 +4,12 @@ import com.nexusadmin.api.extension.web.MappingResolver;
 import com.nexusadmin.api.extension.web.PluginWebRegistry;
 import com.nexusadmin.api.extension.web.WebEndpointExtension;
 import com.nexusadmin.api.extension.web.WebEndpointRegistrar;
-import com.nexusadmin.app.extension.web.InMemoryPluginWebRegistry;
-import com.nexusadmin.app.extension.web.SpringMappingResolver;
-import com.nexusadmin.app.extension.web.SpringWebEndpointExtension;
-import com.nexusadmin.app.extension.web.SpringWebEndpointRegistrar;
+import com.nexusadmin.app.web.InMemoryPluginWebRegistry;
+import com.nexusadmin.app.web.SpringMappingResolver;
+import com.nexusadmin.app.web.SpringWebEndpointExtension;
+import com.nexusadmin.app.web.SpringWebEndpointRegistrar;
 import com.nexusadmin.core.extension.ExtensionRegistry;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
@@ -68,12 +69,15 @@ public class WebEndpointAutoConfig {
      * <p>
      * 同时注册到 Spring 容器和 ExtensionRegistry。
      *
-     * @param extensionRegistry 扩展注册中心
+     * @param applicationContext Spring 应用上下文
+     * @param extensionRegistry  扩展注册中心
      * @return SpringWebEndpointExtension 实例
      */
     @Bean
-    public WebEndpointExtension webEndpointExtension(ExtensionRegistry extensionRegistry) {
-        SpringWebEndpointExtension extension = new SpringWebEndpointExtension();
+    public WebEndpointExtension webEndpointExtension(
+            ApplicationContext applicationContext,
+            ExtensionRegistry extensionRegistry) {
+        SpringWebEndpointExtension extension = new SpringWebEndpointExtension(applicationContext);
         extensionRegistry.register(WebEndpointExtension.class, extension, 50);
         return extension;
     }

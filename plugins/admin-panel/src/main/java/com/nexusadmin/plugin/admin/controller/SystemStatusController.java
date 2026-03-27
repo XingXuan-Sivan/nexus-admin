@@ -1,8 +1,8 @@
 package com.nexusadmin.plugin.admin.controller;
 
 import com.nexusadmin.api.extension.web.AdminApi;
+import com.nexusadmin.api.management.AdminFacade;
 import com.nexusadmin.api.management.PlatformInfoView;
-import com.nexusadmin.api.management.SystemStatusFacade;
 import com.nexusadmin.api.management.SystemStatusView;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,15 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/system")
 public class SystemStatusController {
 
-    private final SystemStatusFacade systemStatusFacade;
+    private final AdminFacade adminFacade;
 
     /**
      * 构造系统状态控制器。
      *
-     * @param systemStatusFacade 系统状态门面
+     * @param adminFacade 管理门面
      */
-    public SystemStatusController(SystemStatusFacade systemStatusFacade) {
-        this.systemStatusFacade = systemStatusFacade;
+    public SystemStatusController(AdminFacade adminFacade) {
+        this.adminFacade = adminFacade;
     }
 
     /**
@@ -37,7 +37,7 @@ public class SystemStatusController {
      */
     @GetMapping("/status")
     public SystemStatusView getStatus() {
-        return systemStatusFacade.getStatus();
+        return adminFacade.system().getStatus();
     }
 
     /**
@@ -47,6 +47,6 @@ public class SystemStatusController {
      */
     @GetMapping("/info")
     public PlatformInfoView getInfo() {
-        return systemStatusFacade.getPlatformInfo();
+        return adminFacade.system().getPlatformInfo();
     }
 }

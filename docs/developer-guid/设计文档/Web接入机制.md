@@ -105,7 +105,7 @@ graph TD
 | 组件 | 职责 | 所在模块 | 说明 |
 |------|------|----------|------|
 | WebEndpointExtension | Web 接入统一扩展点 | api | 扩展点接口，定义注册/卸载端点契约 |
-| SpringWebEndpointExtension | Spring MVC 扩展点实现 | app | 框架特定实现 |
+| SpringWebEndpointExtension | Spring MVC 扩展点实现 | app | 框架特定实现，支持自动扫描 |
 | WebEndpointRegistrar | Web 端点注册器接口 | api | 通用接口，定义注册/卸载契约 |
 | SpringWebEndpointRegistrar | Spring MVC 端点注册器实现 | app | 框架特定实现 |
 | MappingResolver | 映射解析器接口 | api | 通用接口 |
@@ -113,7 +113,9 @@ graph TD
 | PluginWebRegistry | 插件 Web 端点注册表接口 | api | 存储接口 |
 | InMemoryPluginWebRegistry | 内存实现 | app | 基于内存的注册表实现 |
 | AdminApi | 管理面板 API 标记注解 | api | 路径策略标记 |
-| WebControllerProvider | 控制器提供者接口 | api | 插件实现此接口提供 Controller |
+| WebControllerProvider | 控制器提供者接口 | api | 插件实现此接口显式提供 Controller（可选） |
+| EnablePluginWebEndpoints | 启用自动扫描注解 | api | 插件标记此注解启用自动扫描 |
+| EndpointScanConfig | 自动扫描配置 | api | 描述扫描意图的通用配置 |
 | WebEndpointLifecycleListener | 插件生命周期监听器 | app | 通用实现，通过扩展点调度 |
 
 ------
@@ -147,15 +149,26 @@ public interface WebEndpointExtension extends ExtensionPoint {
             WebControllerProvider controllerProvider,
             WebEndpointRegistrar registrar,
             MappingResolver mappingResolver,
-            PluginWebRegistry registry
+            PluginWebRegistry registry,
+            EndpointScanConfig scanConfig
+    ) {
+    }
+
+    record EndpointScanConfig(
+            boolean enabled,
+            String[] basePackages
     ) {
     }
 }
 ```
 
-### 4.2 WebControllerProvider（插件接口）
+### 4.2 控制器发现机制
 
-插件通过实现此接口向平台提供需要注册的 Web 控制器。该接口不依赖任何具体 Web 框架。
+Web 接入机制支持两种控制器发现方式：
+
+#### 4.2.1 显式提供（WebControllerProvider）
+
+插件通过实现 `WebControllerProvider` 接口显式提供控制器。该接口不依赖任何具体 Web 框架。
 
 ```java
 public interface WebControllerProvider {
@@ -183,6 +196,57 @@ public class MyPlugin extends AbstractPlugin implements WebControllerProvider {
     }
 }
 ```
+
+#### 4.2.2 自动扫描（EnablePluginWebEndpoints）
+
+插件通过在主类上标记 `@EnablePluginWebEndpoints` 注解，启用自动扫描机制。平台会自动发现并注册指定包路径下的控制器。
+
+```java
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface EnablePluginWebEndpoints {
+
+    /**
+     * 要扫描的基础包列表。
+     * 未指定时，默认使用插件主类所在包及其子包。
+     */
+    String[] basePackages() default {};
+
+    /**
+     * 通过类推导基础包。
+     */
+    Class<?>[] basePackageClasses() default {};
+}
+```
+
+**使用示例**：
+
+```java
+@EnablePluginWebEndpoints
+public class MyPlugin extends AbstractPlugin {
+    // 自动扫描主类所在包及其子包
+}
+```
+
+或指定扫描包：
+
+```java
+@EnablePluginWebEndpoints(basePackages = "com.example.plugin.web")
+public class MyPlugin extends AbstractPlugin {
+    // 自动扫描指定包
+}
+```
+
+**两种模式对比**：
+
+| 特性 | WebControllerProvider | EnablePluginWebEndpoints |
+|------|----------------------|-------------------------|
+| 使用方式 | 实现接口，重写方法 | 添加注解 |
+| 控制器创建 | 插件手动创建 | 平台自动扫描并实例化 |
+| 依赖注入 | 插件自行处理 | 平台支持构造器注入 |
+| 灵活性 | 完全控制创建过程 | 声明式，接近 Spring Boot 体验 |
+| 推荐场景 | 需要精细控制时 | 标准 REST API 开发 |
 
 ### 4.3 WebEndpointRegistrar（端点注册器接口）
 
@@ -256,21 +320,80 @@ public interface PluginWebRegistry {
 
 ### 4.6 SpringWebEndpointExtension（扩展点实现）
 
-Spring MVC 下的 Web 接入扩展点实现。
+Spring MVC 下的 Web 接入扩展点实现，支持显式提供和自动扫描两种模式。
 
 ```java
+@Extension(priority = 50)
 public class SpringWebEndpointExtension implements WebEndpointExtension {
+
+    private final ApplicationContext applicationContext;
+
+    public SpringWebEndpointExtension(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
 
     @Override
     public void registerEndpoints(Context ctx) {
+        // 1. 处理显式提供的控制器
+        registerExplicitControllers(ctx);
+
+        // 2. 处理自动扫描的控制器
+        registerScannedControllers(ctx);
+    }
+
+    private void registerExplicitControllers(Context ctx) {
         WebControllerProvider provider = ctx.controllerProvider();
         if (provider == null) {
             return;
         }
-
         for (Object controller : provider.getControllers()) {
             ctx.registrar().register(ctx.pluginId(), controller);
         }
+    }
+
+    private void registerScannedControllers(Context ctx) {
+        EndpointScanConfig scanConfig = ctx.scanConfig();
+        if (!scanConfig.enabled()) {
+            return;
+        }
+
+        // 使用 Spring 的 ClassPathScanningCandidateComponentProvider 扫描
+        ClassPathScanningCandidateComponentProvider scanner =
+                new ClassPathScanningCandidateComponentProvider(false);
+        scanner.addIncludeFilter(new AnnotationTypeFilter(RestController.class));
+        scanner.addIncludeFilter(new AnnotationTypeFilter(Controller.class));
+
+        for (String basePackage : scanConfig.basePackages()) {
+            Set<BeanDefinition> candidates = scanner.findCandidateComponents(basePackage);
+            for (BeanDefinition bd : candidates) {
+                Class<?> controllerClass = Class.forName(bd.getBeanClassName(),
+                        false, pluginClassLoader);
+                Object controller = instantiateController(controllerClass);
+                ctx.registrar().register(ctx.pluginId(), controller);
+            }
+        }
+    }
+
+    private Object instantiateController(Class<?> controllerClass) throws Exception {
+        // 优先使用构造器注入：尝试所有参数均可从 ApplicationContext 获取的构造器
+        for (Constructor<?> ctor : controllerClass.getConstructors()) {
+            Class<?>[] paramTypes = ctor.getParameterTypes();
+            Object[] args = new Object[paramTypes.length];
+            boolean allResolvable = true;
+            for (int i = 0; i < paramTypes.length; i++) {
+                try {
+                    args[i] = applicationContext.getBean(paramTypes[i]);
+                } catch (Exception e) {
+                    allResolvable = false;
+                    break;
+                }
+            }
+            if (allResolvable) {
+                return ctor.newInstance(args);
+            }
+        }
+        // 回退到无参构造器
+        return controllerClass.getDeclaredConstructor().newInstance();
     }
 
     @Override
@@ -483,9 +606,10 @@ public class WebEndpointLifecycleListener {
         String pluginId = event.plugin().getPluginId();
         Object plugin = event.plugin().plugin();
         WebControllerProvider provider = (plugin instanceof WebControllerProvider p) ? p : null;
+        EndpointScanConfig scanConfig = buildScanConfig(plugin);
 
         WebEndpointExtension.Context ctx = new WebEndpointExtension.Context(
-                pluginId, plugin, provider, registrar, mappingResolver, registry
+                pluginId, plugin, provider, registrar, mappingResolver, registry, scanConfig
         );
 
         List<WebEndpointExtension> extensions = extensionRegistry.getAll(WebEndpointExtension.class);
@@ -495,6 +619,34 @@ public class WebEndpointLifecycleListener {
             case STOPPING -> extensions.forEach(ext -> ext.unregisterEndpoints(ctx));
             default -> { }
         }
+    }
+
+    private EndpointScanConfig buildScanConfig(Object plugin) {
+        Class<?> pluginClass = plugin.getClass();
+        EnablePluginWebEndpoints ann = pluginClass.getAnnotation(EnablePluginWebEndpoints.class);
+        if (ann == null) {
+            return new EndpointScanConfig(false, new String[0]);
+        }
+
+        List<String> packages = new ArrayList<>();
+        for (String pkg : ann.basePackages()) {
+            if (pkg != null && !pkg.isBlank()) {
+                packages.add(pkg);
+            }
+        }
+        for (Class<?> cls : ann.basePackageClasses()) {
+            if (cls != null) {
+                String pkg = cls.getPackageName();
+                if (pkg != null && !pkg.isBlank()) {
+                    packages.add(pkg);
+                }
+            }
+        }
+        if (packages.isEmpty()) {
+            packages.add(pluginClass.getPackageName());
+        }
+
+        return new EndpointScanConfig(true, packages.toArray(String[]::new));
     }
 }
 ```
@@ -580,7 +732,7 @@ public class WebEndpointAutoConfiguration {
 
 ### 9.1 统一扩展点
 
-Web 接入机制以单一扩展点 `WebEndpointExtension` 暴露，与其他扩展点风格一致，支持插件定制接入行为。
+Web 接入机制以单一扩展点 `WebEndpointExtension` 暴露，与其他扩展点风格一致，支持插件定制接入行为。同时支持显式提供和自动扫描两种控制器发现模式，满足不同场景需求。
 
 ### 9.2 完整插件隔离
 
@@ -596,7 +748,7 @@ Web 接入机制以单一扩展点 `WebEndpointExtension` 暴露，与其他扩�
 
 ### 9.5 框架无关
 
-核心接口（WebEndpointExtension、WebEndpointRegistrar、MappingResolver、WebControllerProvider、PluginWebRegistry）不依赖具体 Web 框架，支持未来扩展：
+核心接口（WebEndpointExtension、WebEndpointRegistrar、MappingResolver、WebControllerProvider、EnablePluginWebEndpoints、PluginWebRegistry）不依赖具体 Web 框架，支持未来扩展：
 
 - 适配其他 Web 框架（如 Vert.x、Quarkus）
 - 网关化路由
@@ -610,10 +762,11 @@ Web 接入机制以单一扩展点 `WebEndpointExtension` 暴露，与其他扩�
 Web 接入机制通过扩展点模式实现了插件 Controller 的动态注册：
 
 1. **统一扩展点**：WebEndpointExtension 作为唯一扩展点，支持插件定制
-2. **接口抽象**：核心接口不依赖具体 Web 框架，支持多种实现
-3. **桥接模式**：通过 HandlerMapping 桥接，不污染主容器
-4. **注册追踪**：精确追踪映射关系，支持安全卸载
-5. **路径隔离**：统一前缀策略避免冲突
-6. **事件驱动**：与插件生命周期无缝集成
+2. **双模式发现**：支持显式提供（WebControllerProvider）和自动扫描（EnablePluginWebEndpoints）两种控制器发现方式
+3. **接口抽象**：核心接口不依赖具体 Web 框架，支持多种实现
+4. **桥接模式**：通过 HandlerMapping 桥接，不污染主容器
+5. **注册追踪**：精确追踪映射关系，支持安全卸载
+6. **路径隔离**：统一前缀策略避免冲突
+7. **事件驱动**：与插件生命周期无缝集成
 
 Web 接入机制与插件系统、事件系统、扩展点系统共同构成了 Nexus Admin 插件化架构的 Web 服务能力基础。

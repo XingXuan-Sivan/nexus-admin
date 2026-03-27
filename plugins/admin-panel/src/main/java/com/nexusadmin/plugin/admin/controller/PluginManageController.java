@@ -1,7 +1,7 @@
 package com.nexusadmin.plugin.admin.controller;
 
 import com.nexusadmin.api.extension.web.AdminApi;
-import com.nexusadmin.api.management.PluginAdminFacade;
+import com.nexusadmin.api.management.AdminFacade;
 import com.nexusadmin.api.management.PluginDetailView;
 import com.nexusadmin.api.management.PluginView;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,15 +25,15 @@ import java.util.Optional;
 @RequestMapping("/plugins")
 public class PluginManageController {
 
-    private final PluginAdminFacade pluginAdminFacade;
+    private final AdminFacade adminFacade;
 
     /**
      * 构造插件管理控制器。
      *
-     * @param pluginAdminFacade 插件管理门面
+     * @param adminFacade 管理门面
      */
-    public PluginManageController(PluginAdminFacade pluginAdminFacade) {
-        this.pluginAdminFacade = pluginAdminFacade;
+    public PluginManageController(AdminFacade adminFacade) {
+        this.adminFacade = adminFacade;
     }
 
     /**
@@ -43,7 +43,7 @@ public class PluginManageController {
      */
     @GetMapping
     public List<PluginView> listAll() {
-        return pluginAdminFacade.listAll();
+        return adminFacade.plugins().listAll();
     }
 
     /**
@@ -54,7 +54,7 @@ public class PluginManageController {
      */
     @GetMapping("/{pluginId}")
     public Optional<PluginDetailView> getDetail(@PathVariable("pluginId") String pluginId) {
-        return pluginAdminFacade.getDetail(pluginId);
+        return adminFacade.plugins().getDetail(pluginId);
     }
 
     /**
@@ -64,7 +64,7 @@ public class PluginManageController {
      */
     @PostMapping("/{pluginId}/start")
     public void start(@PathVariable("pluginId") String pluginId) {
-        pluginAdminFacade.start(pluginId);
+        adminFacade.plugins().start(pluginId);
     }
 
     /**
@@ -74,7 +74,7 @@ public class PluginManageController {
      */
     @PostMapping("/{pluginId}/stop")
     public void stop(@PathVariable("pluginId") String pluginId) {
-        pluginAdminFacade.stop(pluginId);
+        adminFacade.plugins().stop(pluginId);
     }
 
     /**
@@ -84,7 +84,7 @@ public class PluginManageController {
      */
     @PostMapping("/{pluginId}/enable")
     public void enable(@PathVariable("pluginId") String pluginId) {
-        pluginAdminFacade.enable(pluginId);
+        adminFacade.plugins().enable(pluginId);
     }
 
     /**
@@ -94,7 +94,7 @@ public class PluginManageController {
      */
     @PostMapping("/{pluginId}/disable")
     public void disable(@PathVariable("pluginId") String pluginId) {
-        pluginAdminFacade.disable(pluginId);
+        adminFacade.plugins().disable(pluginId);
     }
 
     /**
@@ -104,6 +104,6 @@ public class PluginManageController {
      */
     @DeleteMapping("/{pluginId}")
     public void unload(@PathVariable("pluginId") String pluginId) {
-        pluginAdminFacade.unload(pluginId);
+        adminFacade.plugins().unload(pluginId);
     }
 }
