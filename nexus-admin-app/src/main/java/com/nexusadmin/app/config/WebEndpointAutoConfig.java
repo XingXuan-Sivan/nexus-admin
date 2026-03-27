@@ -25,7 +25,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  * </ul>
  */
 @Configuration
-public class WebEndpointAutoConfiguration {
+public class WebEndpointAutoConfig {
 
     /**
      * 插件 Web 端点注册表。

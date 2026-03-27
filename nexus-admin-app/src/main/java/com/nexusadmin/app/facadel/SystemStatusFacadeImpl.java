@@ -1,11 +1,10 @@
-package com.nexusadmin.app.config;
+package com.nexusadmin.app.facadel;
 
 import com.nexusadmin.api.management.PlatformInfoView;
 import com.nexusadmin.api.management.SystemStatusFacade;
 import com.nexusadmin.api.management.SystemStatusView;
 import com.nexusadmin.core.PluginManager;
 import com.nexusadmin.core.PluginState;
-import com.nexusadmin.core.plugin.loader.PluginWrapper;
 
 import java.util.Map;
 

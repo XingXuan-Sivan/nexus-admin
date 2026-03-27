@@ -2,12 +2,15 @@ package com.nexusadmin.core;
 
 import com.nexusadmin.core.config.ConfigManager;
 import com.nexusadmin.core.context.PlatformAccess;
+import com.nexusadmin.core.context.PlatformServices;
 import com.nexusadmin.core.context.PluginContext;
 import com.nexusadmin.core.context.PluginInfo;
 import com.nexusadmin.core.context.PluginRuntime;
 import com.nexusadmin.core.context.PluginWorkspace;
 import com.nexusadmin.core.event.EventPublisher;
 import com.nexusadmin.core.extension.ExtensionRegistry;
+
+import java.util.Optional;
 
 /**
  * 插件抽象基类，提供上下文封装和生命周期模板方法。
@@ -231,5 +234,26 @@ public abstract class AbstractPlugin implements Plugin {
      */
     protected final ConfigManager config() {
         return platform().config();
+    }
+
+    /**
+     * 获取平台服务注册中心。
+     *
+     * @return 平台服务注册中心
+     */
+    protected final PlatformServices services() {
+        return platform().services();
+    }
+
+    /**
+     * 获取指定类型的服务实例。
+     * <p>这是 {@link #services()} 的便捷方法。</p>
+     *
+     * @param <T>  服务类型
+     * @param type 服务接口类型
+     * @return 服务实例的 Optional，如果未注册则返回空
+     */
+    protected final <T> Optional<T> service(Class<T> type) {
+        return platform().service(type);
     }
 }

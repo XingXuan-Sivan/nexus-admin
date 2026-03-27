@@ -26,41 +26,35 @@ public class AdminPanelPlugin extends AbstractPlugin implements WebControllerPro
 
     @Override
     protected void initialize() throws Exception {
-        log.info("管理面板插件初始化开始，插件ID={}", pluginId());
-
-        // 获取管理门面
-        adminFacade = platform().adminFacade(AdminFacade.class).orElse(null);
+        // 获取管理门面服务
+        adminFacade = service(AdminFacade.class).orElse(null);
         if (adminFacade == null) {
-            log.warn("管理门面未就绪，部分功能可能受限");
+            log.warn("管理门面服务未就绪，部分功能可能受限");
         }
-
-        log.info("管理面板插件初始化完成");
     }
 
     @Override
     protected void start() throws Exception {
-        log.info("管理面板插件启动中...");
-        log.info("管理面板插件启动完成");
+        // 启动逻辑由基类日志记录
     }
 
     @Override
     protected void stop() throws Exception {
-        log.info("管理面板插件停止中...");
-        log.info("管理面板插件停止完成");
+        // 停止逻辑由基类日志记录
     }
 
     @Override
     protected void unload() throws Exception {
-        log.info("管理面板插件卸载完成");
+        // 卸载逻辑由基类日志记录
     }
 
     @Override
     public List<Object> getControllers() {
         if (adminFacade == null) {
-            adminFacade = platform().adminFacade(AdminFacade.class).orElse(null);
+            adminFacade = service(AdminFacade.class).orElse(null);
         }
         if (adminFacade == null) {
-            log.warn("管理门面未就绪，无法提供 Controller");
+            log.warn("管理门面服务未就绪，无法提供 Controller");
             return List.of();
         }
         return List.of(

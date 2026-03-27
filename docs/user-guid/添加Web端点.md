@@ -159,14 +159,14 @@ public class MyPlugin extends AbstractPlugin implements WebControllerProvider {
     @Override
     protected void initialize() throws Exception {
         // 初始化阶段可能无法获取依赖
-        adminFacade = platform().adminFacade(AdminFacade.class).orElse(null);
+        adminFacade = service(AdminFacade.class).orElse(null);
     }
 
     @Override
     public List<Object> getControllers() {
         // 延迟获取依赖
         if (adminFacade == null) {
-            adminFacade = platform().adminFacade(AdminFacade.class).orElse(null);
+            adminFacade = service(AdminFacade.class).orElse(null);
         }
         
         if (adminFacade == null) {

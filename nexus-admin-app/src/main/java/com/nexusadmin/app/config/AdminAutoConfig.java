@@ -29,7 +29,7 @@ import java.util.List;
  * </ul>
  */
 @Configuration
-public class AdminAutoConfiguration {
+public class AdminAutoConfig {
 
     /**
      * 引导认证提供者。

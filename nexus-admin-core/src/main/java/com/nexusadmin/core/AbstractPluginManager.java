@@ -2,6 +2,7 @@ package com.nexusadmin.core;
 
 import com.nexusadmin.core.config.ConfigManager;
 import com.nexusadmin.core.context.PlatformAccess;
+import com.nexusadmin.core.context.PlatformServices;
 import com.nexusadmin.core.context.PluginContext;
 import com.nexusadmin.core.context.PluginInfo;
 import com.nexusadmin.core.context.PluginRuntime;
@@ -52,8 +53,8 @@ public abstract class AbstractPluginManager implements PluginManager {
     // ===== 配置中心相关 =====
     protected ConfigManager configManager;
 
-    // ===== 管理门面相关 =====
-    protected Object adminFacade;
+    // ===== 平台服务注册中心 =====
+    protected final PlatformServices platformServices = new PlatformServices();
 
     /**
      * 插件上下文缓存，用于生命周期方法调用。
@@ -149,7 +150,7 @@ public abstract class AbstractPluginManager implements PluginManager {
                 runtimeMode,
                 coreVersion,
                 configManager,
-                adminFacade
+                platformServices
         );
 
         return new PluginContext(info, runtime, workspace, platform);
@@ -625,11 +626,12 @@ public abstract class AbstractPluginManager implements PluginManager {
     }
 
     /**
-     * 设置管理门面。
+     * 获取平台服务注册中心。
+     * <p>宿主应用通过此方法注册服务供插件使用。</p>
      *
-     * @param adminFacade 管理门面实例
+     * @return 平台服务注册中心
      */
-    public void setAdminFacade(Object adminFacade) {
-        this.adminFacade = adminFacade;
+    public PlatformServices platformServices() {
+        return platformServices;
     }
 }

@@ -10,7 +10,7 @@ import java.util.Optional;
 
 /**
  * 平台能力访问接口，提供插件与平台交互的统一入口。
- * <p>通过此接口插件可以访问扩展注册中心、事件发布、配置服务等核心能力。</p>
+ * <p>通过此接口插件可以访问扩展注册中心、事件发布、配置服务、平台服务等核心能力。</p>
  */
 public final class PlatformAccess {
 
@@ -19,7 +19,7 @@ public final class PlatformAccess {
     private final RuntimeMode runtimeMode;
     private final String coreVersion;
     private final ConfigManager configManager;
-    private final Object adminFacade;
+    private final PlatformServices platformServices;
 
     /**
      * 构造平台访问对象。
@@ -35,7 +35,7 @@ public final class PlatformAccess {
                           RuntimeMode runtimeMode,
                           String coreVersion,
                           ConfigManager configManager) {
-        this(extensionRegistry, eventPublisher, runtimeMode, coreVersion, configManager, null);
+        this(extensionRegistry, eventPublisher, runtimeMode, coreVersion, configManager, new PlatformServices());
     }
 
     /**
@@ -46,20 +46,20 @@ public final class PlatformAccess {
      * @param runtimeMode       运行模式
      * @param coreVersion       核心版本号
      * @param configManager     配置管理器
-     * @param adminFacade       管理门面
+     * @param platformServices  平台服务注册中心
      */
     public PlatformAccess(ExtensionRegistry extensionRegistry,
                           EventPublisher eventPublisher,
                           RuntimeMode runtimeMode,
                           String coreVersion,
                           ConfigManager configManager,
-                          Object adminFacade) {
+                          PlatformServices platformServices) {
         this.extensionRegistry = Objects.requireNonNull(extensionRegistry, "扩展注册中心不能为空");
         this.eventPublisher = Objects.requireNonNull(eventPublisher, "事件发布者不能为空");
         this.runtimeMode = Objects.requireNonNull(runtimeMode, "运行模式不能为空");
         this.coreVersion = Objects.requireNonNull(coreVersion, "核心版本号不能为空");
         this.configManager = configManager;
-        this.adminFacade = adminFacade;
+        this.platformServices = platformServices != null ? platformServices : new PlatformServices();
     }
 
     /**
@@ -135,29 +135,23 @@ public final class PlatformAccess {
     }
 
     /**
-     * 获取管理门面。
+     * 获取平台服务注册中心。
      *
-     * @param <T> 管理门面类型
-     * @param type 管理门面类型
-     * @return 管理门面 Optional
+     * @return 平台服务注册中心
      */
-    @SuppressWarnings("unchecked")
-    public <T> Optional<T> adminFacade(Class<T> type) {
-        if (adminFacade == null) {
-            return Optional.empty();
-        }
-        if (type.isInstance(adminFacade)) {
-            return Optional.of((T) adminFacade);
-        }
-        return Optional.empty();
+    public PlatformServices services() {
+        return platformServices;
     }
 
     /**
-     * 获取管理门面（原始类型）。
+     * 获取指定类型的服务实例。
+     * <p>这是 {@link #services()} 的便捷方法。</p>
      *
-     * @return 管理门面，可能为 null
+     * @param <T>  服务类型
+     * @param type 服务接口类型
+     * @return 服务实例的 Optional，如果未注册则返回空
      */
-    public Object adminFacade() {
-        return adminFacade;
+    public <T> Optional<T> service(Class<T> type) {
+        return platformServices.get(type);
     }
 }
