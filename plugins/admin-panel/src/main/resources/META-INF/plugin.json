@@ -1,8 +1,0 @@
-{
-  "id": "admin-panel",
-  "version": "1.0.0",
-  "name": "管理面板",
-  "description": "提供平台管理 REST API 和基础认证能力",
-  "mainClass": "com.nexusadmin.plugin.admin.AdminPanelPlugin",
-  "author": "Nexus Admin Team"
-}

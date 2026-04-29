@@ -1,10 +1,11 @@
 package com.nexusadmin.app.controller;
 
+import com.nexusadmin.api.result.DataResult;
 import com.nexusadmin.app.config.properties.PlatformProperties;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -31,12 +32,12 @@ public class PlatformController {
      * @return 平台基本信息
      */
     @GetMapping("/")
-    public Map<String, Object> index() {
-        Map<String, Object> result = new HashMap<>();
-        result.put("name", platformProperties.getInfo().getName());
-        result.put("version", platformProperties.getInfo().getVersion());
-        result.put("description", platformProperties.getInfo().getDescription());
-        result.put("status", "running");
-        return result;
+    public DataResult<Map<String, Object>> index() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("name", platformProperties.getInfo().getName());
+        data.put("version", platformProperties.getInfo().getVersion());
+        data.put("description", platformProperties.getInfo().getDescription());
+        data.put("status", "running");
+        return DataResult.success(data);
     }
 }

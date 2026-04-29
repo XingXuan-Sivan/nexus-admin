@@ -1,8 +1,6 @@
 package com.nexusadmin.app.config;
 
-import com.nexusadmin.api.management.AdminFacade;
 import com.nexusadmin.app.config.properties.PlatformProperties;
-import com.nexusadmin.app.facadel.AdminFacadeImpl;
 import com.nexusadmin.core.DefaultPluginManager;
 import com.nexusadmin.core.PluginManager;
 import com.nexusadmin.core.event.EventBus;
@@ -230,29 +228,5 @@ public class BootstrapConfig {
             return dpm.configManager();
         }
         return null;
-    }
-
-    // ==================== 管理门面初始化 ====================
-
-    /**
-     * 管理门面。
-     * <p>
-     * 创建管理门面并注册到平台服务注册中心，供插件使用。
-     *
-     * @param pluginManager 插件管理器
-     * @param configManager 配置管理器
-     * @return AdminFacade 实例
-     */
-    @Bean
-    public AdminFacade adminFacade(PluginManager pluginManager,
-                                    com.nexusadmin.core.config.ConfigManager configManager) {
-        AdminFacade facade = new AdminFacadeImpl(pluginManager, configManager);
-
-        // 将 AdminFacade 注册到平台服务注册中心
-        if (pluginManager instanceof DefaultPluginManager dpm) {
-            dpm.platformServices().register(AdminFacade.class, facade);
-        }
-
-        return facade;
     }
 }

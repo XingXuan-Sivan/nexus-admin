@@ -1,6 +1,7 @@
 package com.nexusadmin.plugin.system.user.controller;
 
 import com.nexusadmin.api.domain.identity.User;
+import com.nexusadmin.api.result.DataResult;
 import com.nexusadmin.plugin.system.user.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -9,10 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 用户管理控制器层占位类。
- * <p>
- * 目前仅定义方法签名和调用服务层的结构，后续可根据实际 Web 框架（如 Spring MVC）添加注解与实现。
- * </p>
+ * 用户管理控制器。
  */
 @RestController
 @RequestMapping("/user")
@@ -20,28 +18,39 @@ public class UserController {
 
     private final UserService userService;
 
+    /**
+     * 构造用户控制器。
+     *
+     * @param userService 用户服务
+     */
     public UserController(UserService userService) {
         this.userService = userService;
     }
 
     /**
      * 查询用户列表。
+     *
+     * @return 用户列表
      */
     @GetMapping("/list")
-    public List<User> listUsers() {
-        System.out.println("UserController 初始化>>>>>>>>>>>>>>>>>>>>>>>>>>");
-        return userService.listUsers();
+    public DataResult<List<User>> listUsers() {
+        return DataResult.success(userService.listUsers());
     }
 
     /**
      * 按 ID 查询单个用户。
+     *
+     * @param userId 用户 ID
+     * @return 用户信息
      */
-    public User getUser(String userId) {
-        return userService.getUser(userId);
+    public DataResult<User> getUser(String userId) {
+        return DataResult.success(userService.getUser(userId));
     }
 
     /**
      * 创建用户。
+     *
+     * @param user 用户信息
      */
     public void createUser(User user) {
         userService.createUser(user);
@@ -49,6 +58,8 @@ public class UserController {
 
     /**
      * 更新用户信息。
+     *
+     * @param user 用户信息
      */
     public void updateUser(User user) {
         userService.updateUser(user);
@@ -56,6 +67,8 @@ public class UserController {
 
     /**
      * 删除用户。
+     *
+     * @param userId 用户 ID
      */
     public void deleteUser(String userId) {
         userService.deleteUser(userId);

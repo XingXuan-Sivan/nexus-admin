@@ -21,11 +21,10 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- Spring Web 依赖（用于 Web 端点注册机制） -->
+        <!-- Spring Web 依赖（用于 Web 端点注册机制 与 RESTful API 控制器） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>

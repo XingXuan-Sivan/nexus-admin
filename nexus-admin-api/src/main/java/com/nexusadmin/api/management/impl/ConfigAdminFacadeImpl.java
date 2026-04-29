@@ -1,4 +1,4 @@
-package com.nexusadmin.app.facadel;
+package com.nexusadmin.api.management.impl;
 
 import com.nexusadmin.api.management.ConfigAdminFacade;
 import com.nexusadmin.core.config.ConfigManager;

@@ -369,7 +369,7 @@ public class StatsController {
 GET /admin/stats
 ```
 
-**注意**：管理面板端点需要 Basic 认证，默认用户名密码为 `admin` / `admin123`。
+**注意**：管理面板端点需要认证。默认使用引导认证（配置 `platform.auth.bootstrap.username/password`），也可通过浏览器访问 `/admin/login` 登录。
 
 ------
 

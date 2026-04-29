@@ -1,9 +1,9 @@
-package com.nexusadmin.plugin.admin.controller;
+package com.nexusadmin.api.controller;
 
-import com.nexusadmin.api.extension.web.AdminApi;
 import com.nexusadmin.api.management.AdminFacade;
 import com.nexusadmin.api.management.PlatformInfoView;
 import com.nexusadmin.api.management.SystemStatusView;
+import com.nexusadmin.api.result.DataResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,11 +12,10 @@ import org.springframework.web.bind.annotation.RestController;
  * 系统状态控制器。
  * <p>
  * 提供系统运行状态查询 API。
- * 使用 @AdminApi 注解，实际访问路径为 /admin/system。
+ * 作为平台内建能力，直接映射到 /admin/system 路径。
  */
 @RestController
-@AdminApi
-@RequestMapping("/system")
+@RequestMapping("/admin/system")
 public class SystemStatusController {
 
     private final AdminFacade adminFacade;
@@ -36,8 +35,8 @@ public class SystemStatusController {
      * @return 系统状态视图
      */
     @GetMapping("/status")
-    public SystemStatusView getStatus() {
-        return adminFacade.system().getStatus();
+    public DataResult<SystemStatusView> getStatus() {
+        return DataResult.success(adminFacade.system().getStatus());
     }
 
     /**
@@ -46,7 +45,7 @@ public class SystemStatusController {
      * @return 平台信息视图
      */
     @GetMapping("/info")
-    public PlatformInfoView getInfo() {
-        return adminFacade.system().getPlatformInfo();
+    public DataResult<PlatformInfoView> getInfo() {
+        return DataResult.success(adminFacade.system().getPlatformInfo());
     }
 }

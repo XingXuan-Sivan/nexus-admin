@@ -1,4 +1,4 @@
-package com.nexusadmin.app.facadel;
+package com.nexusadmin.api.management.impl;
 
 import com.nexusadmin.api.management.PlatformInfoView;
 import com.nexusadmin.api.management.SystemStatusFacade;
@@ -60,7 +60,7 @@ public class SystemStatusFacadeImpl implements SystemStatusFacade {
         return new PlatformInfoView(
                 "Nexus Admin",
                 "0.1.0-SNAPSHOT",
-                "插件化业务拓展平台",
+                "插件化系统拓展平台",
                 Map.of("javaVersion", System.getProperty("java.version")),
                 Map.of("osName", System.getProperty("os.name"))
         );

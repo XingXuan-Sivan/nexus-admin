@@ -13,7 +13,7 @@ platform:
   info:
     name: Nexus Admin
     version: 0.1.0-SNAPSHOT
-    description: 插件化业务拓展平台
+    description: 插件化系统拓展平台
   # 插件系统配置
   plugin:
     # 插件根目录路径
@@ -24,6 +24,12 @@ platform:
     runtime-mode: DEVELOPMENT
     # 是否在加载后自动启动具有入口点的插件
     auto-start: true
+  # 认证配置
+  auth:
+    # 引导认证配置（系统固有配置，当存在其他认证提供者时自动禁用）
+    bootstrap:
+      username: admin
+      password: admin123
 
 logging:
   level:
