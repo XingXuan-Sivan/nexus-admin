@@ -1,8 +1,8 @@
 package com.nexusadmin.api.controller;
 
-import com.nexusadmin.api.management.AdminFacade;
-import com.nexusadmin.api.management.PlatformInfoView;
-import com.nexusadmin.api.management.SystemStatusView;
+import com.nexusadmin.api.facade.AdminFacade;
+import com.nexusadmin.api.facade.PlatformInfoView;
+import com.nexusadmin.api.facade.SystemStatusView;
 import com.nexusadmin.api.result.DataResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

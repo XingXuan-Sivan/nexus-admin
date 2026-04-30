@@ -1,8 +1,8 @@
 package com.nexusadmin.api.controller;
 
-import com.nexusadmin.api.management.AdminFacade;
-import com.nexusadmin.api.management.PluginDetailView;
-import com.nexusadmin.api.management.PluginView;
+import com.nexusadmin.api.facade.AdminFacade;
+import com.nexusadmin.api.facade.PluginDetailView;
+import com.nexusadmin.api.facade.PluginView;
 import com.nexusadmin.api.result.DataResult;
 import com.nexusadmin.api.result.Result;
 import org.springframework.web.bind.annotation.DeleteMapping;

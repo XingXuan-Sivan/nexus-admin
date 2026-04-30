@@ -1,5 +1,7 @@
 package com.nexusadmin.core.extension;
 
+import com.nexusadmin.core.event.EventBus;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -11,6 +13,11 @@ import java.util.stream.Collectors;
  * <p>基于线程安全的并发集合实现，支持优先级排序和插件级生命周期管理。</p>
  */
 public class DefaultExtensionRegistry implements ExtensionRegistry {
+
+    /**
+     * 事件总线，用于发布扩展变更事件。可为 null（向后兼容）。
+     */
+    private final EventBus eventBus;
 
     /**
      * 注册的扩展信息内部类。
@@ -42,6 +49,24 @@ public class DefaultExtensionRegistry implements ExtensionRegistry {
      */
     private final ConcurrentHashMap<String, List<RegisteredExtension>> pluginExtensions = new ConcurrentHashMap<>();
 
+    /**
+     * 构造默认扩展注册中心（无事件总线）。
+     * <p>向后兼容的构造方法，不会发布扩展变更事件。</p>
+     */
+    public DefaultExtensionRegistry() {
+        this(null);
+    }
+
+    /**
+     * 构造默认扩展注册中心，指定事件总线。
+     * <p>当 eventBus 不为空时，扩展的注册/注销/清空操作会自动发布 {@link ExtensionChangedEvent}。</p>
+     *
+     * @param eventBus 事件总线，可为 null
+     */
+    public DefaultExtensionRegistry(EventBus eventBus) {
+        this.eventBus = eventBus;
+    }
+
     @Override
     public <T extends ExtensionPoint> void register(Class<T> pointType, T implementation) {
         register(pointType, implementation, 0);
@@ -65,6 +90,10 @@ public class DefaultExtensionRegistry implements ExtensionRegistry {
         if (!pluginId.isEmpty()) {
             pluginExtensions.computeIfAbsent(pluginId, key -> new CopyOnWriteArrayList<>()).add(registered);
         }
+
+        // 发布扩展注册事件
+        publishEvent(new ExtensionChangedEvent(pointType,
+                ExtensionChangedEvent.ChangeType.REGISTERED, implementation));
     }
 
     @Override
@@ -90,6 +119,10 @@ public class DefaultExtensionRegistry implements ExtensionRegistry {
                                 registered.implementation.equals(implementation));
             }
         }
+
+        // 发布扩展注销事件
+        publishEvent(new ExtensionChangedEvent(pointType,
+                ExtensionChangedEvent.ChangeType.UNREGISTERED, implementation));
     }
 
     @Override
@@ -120,6 +153,7 @@ public class DefaultExtensionRegistry implements ExtensionRegistry {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void unregisterByPluginId(String pluginId) {
         if (pluginId == null || pluginId.isEmpty()) {
             return;
@@ -130,9 +164,31 @@ public class DefaultExtensionRegistry implements ExtensionRegistry {
             return;
         }
 
+        // 收集被移除扩展对应的扩展点类型，用于发布事件
+        Map<Class<? extends ExtensionPoint>, List<RegisteredExtension>> removedByType = new LinkedHashMap<>();
+
         // 从所有扩展点注册表中移除该插件的扩展
-        for (CopyOnWriteArrayList<RegisteredExtension> list : registry.values()) {
-            list.removeIf(registered -> pluginId.equals(registered.pluginId));
+        for (Map.Entry<Class<? extends ExtensionPoint>, CopyOnWriteArrayList<RegisteredExtension>> entry : registry.entrySet()) {
+            Class<? extends ExtensionPoint> pointType = entry.getKey();
+            CopyOnWriteArrayList<RegisteredExtension> list = entry.getValue();
+
+            List<RegisteredExtension> removed = list.stream()
+                    .filter(registered -> pluginId.equals(registered.pluginId))
+                    .collect(Collectors.toList());
+
+            if (!removed.isEmpty()) {
+                list.removeIf(registered -> pluginId.equals(registered.pluginId));
+                removedByType.put(pointType, removed);
+            }
+        }
+
+        // 对每个移除的扩展发布 UNREGISTERED 事件
+        for (Map.Entry<Class<? extends ExtensionPoint>, List<RegisteredExtension>> entry : removedByType.entrySet()) {
+            for (RegisteredExtension removed : entry.getValue()) {
+                publishEvent(new ExtensionChangedEvent(entry.getKey(),
+                        ExtensionChangedEvent.ChangeType.UNREGISTERED,
+                        (ExtensionPoint) removed.implementation));
+            }
         }
     }
 
@@ -142,12 +198,25 @@ public class DefaultExtensionRegistry implements ExtensionRegistry {
             return;
         }
         registry.remove(pointType);
+
+        // 发布扩展清空事件
+        publishEvent(new ExtensionChangedEvent(pointType,
+                ExtensionChangedEvent.ChangeType.CLEARED, null));
     }
 
     @Override
     public void clearAll() {
+        // 先收集所有扩展点类型，用于发布事件
+        Set<Class<? extends ExtensionPoint>> pointTypes = new LinkedHashSet<>(registry.keySet());
+
         registry.clear();
         pluginExtensions.clear();
+
+        // 对每个类型发布 CLEARED 事件
+        for (Class<? extends ExtensionPoint> pointType : pointTypes) {
+            publishEvent(new ExtensionChangedEvent(pointType,
+                    ExtensionChangedEvent.ChangeType.CLEARED, null));
+        }
     }
 
     /**
@@ -161,5 +230,17 @@ public class DefaultExtensionRegistry implements ExtensionRegistry {
         // 可通过实现特定接口或注解来获取插件ID
         // 默认返回空字符串
         return "";
+    }
+
+    /**
+     * 发布扩展变更事件。
+     * <p>当 eventBus 为 null 时不发布事件（向后兼容）。</p>
+     *
+     * @param event 扩展变更事件
+     */
+    private void publishEvent(ExtensionChangedEvent event) {
+        if (eventBus != null) {
+            eventBus.publish(event);
+        }
     }
 }

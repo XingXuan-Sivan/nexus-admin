@@ -1,4 +1,4 @@
-package com.nexusadmin.api.management;
+package com.nexusadmin.api.facade;
 
 /**
  * 控制平面门面接口，为管理面板提供统一的系统能力访问入口。
@@ -27,14 +27,14 @@ public interface AdminFacade {
      *
      * @return 插件管理门面
      */
-    PluginAdminFacade plugins();
+    PluginFacade plugins();
 
     /**
      * 获取配置管理门面。
      *
      * @return 配置管理门面
      */
-    ConfigAdminFacade config();
+    ConfigFacade config();
 
     /**
      * 获取系统状态门面。

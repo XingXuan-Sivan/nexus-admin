@@ -1,4 +1,4 @@
-package com.nexusadmin.api.management;
+package com.nexusadmin.api.facade;
 
 import com.nexusadmin.api.exception.PluginOperationException;
 
@@ -10,7 +10,7 @@ import java.util.Optional;
  *
  * <p>该接口封装插件管理操作，为管理面板提供稳定的控制平面 API。</p>
  */
-public interface PluginAdminFacade {
+public interface PluginFacade {
 
     /**
      * 获取所有插件的摘要列表。

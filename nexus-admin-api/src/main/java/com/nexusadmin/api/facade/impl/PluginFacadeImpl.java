@@ -1,10 +1,10 @@
-package com.nexusadmin.api.management.impl;
+package com.nexusadmin.api.facade.impl;
 
 import com.nexusadmin.api.exception.PluginOperationException;
-import com.nexusadmin.api.management.PluginAdminFacade;
-import com.nexusadmin.api.management.PluginDetailView;
-import com.nexusadmin.api.management.PluginStateView;
-import com.nexusadmin.api.management.PluginView;
+import com.nexusadmin.api.facade.PluginFacade;
+import com.nexusadmin.api.facade.PluginDetailView;
+import com.nexusadmin.api.facade.PluginStateView;
+import com.nexusadmin.api.facade.PluginView;
 import com.nexusadmin.core.PluginManager;
 import com.nexusadmin.core.PluginState;
 import com.nexusadmin.core.plugin.loader.PluginWrapper;
@@ -16,7 +16,7 @@ import java.util.Set;
 /**
  * 插件管理门面实现类。
  */
-public class PluginAdminFacadeImpl implements PluginAdminFacade {
+public class PluginFacadeImpl implements PluginFacade {
 
     private final PluginManager pluginManager;
 
@@ -25,7 +25,7 @@ public class PluginAdminFacadeImpl implements PluginAdminFacade {
      *
      * @param pluginManager 插件管理器
      */
-    public PluginAdminFacadeImpl(PluginManager pluginManager) {
+    public PluginFacadeImpl(PluginManager pluginManager) {
         this.pluginManager = pluginManager;
     }
 

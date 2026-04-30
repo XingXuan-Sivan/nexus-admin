@@ -1,7 +1,7 @@
 package com.nexusadmin.app.controller;
 
 import com.nexusadmin.api.result.DataResult;
-import com.nexusadmin.app.config.properties.PlatformProperties;
+import com.nexusadmin.core.config.ConfigManager;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -14,15 +14,15 @@ import java.util.Map;
 @RestController
 public class PlatformController {
 
-    private final PlatformProperties platformProperties;
+    private final ConfigManager configManager;
 
     /**
      * 构造平台控制器。
      *
-     * @param platformProperties 平台配置属性
+     * @param configManager 配置管理器
      */
-    public PlatformController(PlatformProperties platformProperties) {
-        this.platformProperties = platformProperties;
+    public PlatformController(ConfigManager configManager) {
+        this.configManager = configManager;
     }
 
     /**
@@ -34,9 +34,9 @@ public class PlatformController {
     @GetMapping("/")
     public DataResult<Map<String, Object>> index() {
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("name", platformProperties.getInfo().getName());
-        data.put("version", platformProperties.getInfo().getVersion());
-        data.put("description", platformProperties.getInfo().getDescription());
+        data.put("name", configManager.get("platform", "infoName").orElse("Nexus Admin"));
+        data.put("version", configManager.get("platform", "infoVersion").orElse("0.1.0-SNAPSHOT"));
+        data.put("description", configManager.get("platform", "infoDescription").orElse("插件化系统拓展平台"));
         data.put("status", "running");
         return DataResult.success(data);
     }

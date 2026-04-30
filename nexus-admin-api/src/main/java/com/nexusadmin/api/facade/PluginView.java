@@ -1,4 +1,4 @@
-package com.nexusadmin.api.management;
+package com.nexusadmin.api.facade;
 
 /**
  * 插件摘要视图，用于列表展示。

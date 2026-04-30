@@ -1,4 +1,4 @@
-package com.nexusadmin.api.management;
+package com.nexusadmin.api.facade;
 
 import java.util.Collections;
 import java.util.HashMap;

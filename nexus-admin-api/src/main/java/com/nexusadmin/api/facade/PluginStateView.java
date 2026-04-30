@@ -1,4 +1,4 @@
-package com.nexusadmin.api.management;
+package com.nexusadmin.api.facade;
 
 /**
  * 插件状态视图枚举，用于管理面板展示插件状态。

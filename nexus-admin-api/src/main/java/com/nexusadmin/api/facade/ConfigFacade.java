@@ -1,4 +1,4 @@
-package com.nexusadmin.api.management;
+package com.nexusadmin.api.facade;
 
 import java.util.List;
 import java.util.Map;
@@ -9,7 +9,7 @@ import java.util.Optional;
  *
  * <p>该接口封装配置中心操作，为管理面板提供稳定的控制平面 API。</p>
  */
-public interface ConfigAdminFacade {
+public interface ConfigFacade {
 
     // ==================== 平台配置 ====================
 

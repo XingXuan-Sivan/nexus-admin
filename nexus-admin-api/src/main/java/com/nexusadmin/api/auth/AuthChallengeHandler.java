@@ -1,5 +1,6 @@
 package com.nexusadmin.api.auth;
 
+import com.nexusadmin.core.extension.ExtensionPoint;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -17,7 +18,7 @@ import java.io.IOException;
  * AuthFilter 在认证失败时将响应委托给此接口，从而将认证失败的处理策略
  * 与过滤器本身解耦，保持过滤器的通用性。
  */
-public interface AuthChallengeHandler {
+public interface AuthChallengeHandler extends ExtensionPoint {
 
     /**
      * 处理认证挑战，向客户端返回适当的未认证响应。

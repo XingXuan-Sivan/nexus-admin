@@ -3,6 +3,7 @@ package com.nexusadmin.api.auth;
 import com.nexusadmin.api.extension.auth.AuthProvider.AuthRequest;
 import com.nexusadmin.api.extension.auth.AuthProvider.AuthResult;
 import com.nexusadmin.api.extension.auth.AuthProvider.AuthStatus;
+import com.nexusadmin.core.extension.ExtensionConsumer;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.FilterConfig;
@@ -47,17 +48,20 @@ public class AuthFilter implements Filter {
     private static final String SESSION_ATTR_USER = "authenticatedUser";
 
     private final CompositeAuthProvider authProvider;
-    private final AuthChallengeHandler challengeHandler;
+    private final ExtensionConsumer<AuthChallengeHandler> challengeHandlerConsumer;
+    private final AuthChallengeHandler fallbackHandler;
 
     /**
      * 构造管理面板认证过滤器。
      *
-     * @param authProvider     组合认证提供者
-     * @param challengeHandler 认证挑战处理器
+     * @param authProvider            组合认证提供者
+     * @param challengeHandlerConsumer 认证挑战处理器扩展点消费者
      */
-    public AuthFilter(CompositeAuthProvider authProvider, AuthChallengeHandler challengeHandler) {
+    public AuthFilter(CompositeAuthProvider authProvider,
+                      ExtensionConsumer<AuthChallengeHandler> challengeHandlerConsumer) {
         this.authProvider = authProvider;
-        this.challengeHandler = challengeHandler;
+        this.challengeHandlerConsumer = challengeHandlerConsumer;
+        this.fallbackHandler = new DefaultAuthChallengeHandler();
     }
 
     @Override
@@ -108,18 +112,29 @@ public class AuthFilter implements Filter {
                 chain.doFilter(request, response);
             } else {
                 log.warn("管理面板认证失败: {}", authResult.message());
-                challengeHandler.handleChallenge(httpRequest, httpResponse, authResult.message());
+                resolveChallengeHandler().handleChallenge(httpRequest, httpResponse, authResult.message());
             }
             return;
         }
 
         // 4. 无凭证信息，委托给挑战处理器
-        challengeHandler.handleChallenge(httpRequest, httpResponse, null);
+        resolveChallengeHandler().handleChallenge(httpRequest, httpResponse, null);
     }
 
     @Override
     public void destroy() {
         log.info("管理面板认证过滤器已销毁");
+    }
+
+    /**
+     * 动态解析当前最高优先级的认证挑战处理器。
+     * <p>
+     * 优先从扩展点消费者获取，若无可用实现则使用默认 401 响应处理器作为兜底。
+     *
+     * @return 认证挑战处理器
+     */
+    private AuthChallengeHandler resolveChallengeHandler() {
+        return challengeHandlerConsumer.get().orElse(fallbackHandler);
     }
 
     /**

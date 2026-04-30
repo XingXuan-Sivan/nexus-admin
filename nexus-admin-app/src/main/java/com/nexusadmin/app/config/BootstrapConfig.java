@@ -1,13 +1,10 @@
 package com.nexusadmin.app.config;
 
-import com.nexusadmin.app.config.properties.PlatformProperties;
+import com.nexusadmin.app.config.properties.PluginProperties;
 import com.nexusadmin.core.DefaultPluginManager;
 import com.nexusadmin.core.PluginManager;
 import com.nexusadmin.core.event.EventBus;
-import com.nexusadmin.core.event.SyncEventBus;
-import com.nexusadmin.core.extension.DefaultExtensionRegistry;
 import com.nexusadmin.core.extension.ExtensionRegistry;
-import com.nexusadmin.core.plugin.DefaultPluginRegistry;
 import com.nexusadmin.core.plugin.PluginRegistry;
 import com.nexusadmin.core.plugin.RuntimeMode;
 import com.nexusadmin.core.plugin.discovery.PluginDescriptorFinder;
@@ -19,12 +16,9 @@ import com.nexusadmin.core.plugin.discovery.finder.PackedDirectoryFinder;
 import com.nexusadmin.core.plugin.discovery.parser.JsonPluginDescriptorParser;
 import com.nexusadmin.core.plugin.discovery.source.ClasspathPluginSource;
 import com.nexusadmin.core.plugin.discovery.source.LocalDirectorySource;
-import com.nexusadmin.core.plugin.loader.DefaultPluginLoader;
 import com.nexusadmin.core.plugin.loader.PluginLoader;
-import com.nexusadmin.core.plugin.resolve.DefaultDependenceManager;
 import com.nexusadmin.core.plugin.resolve.DependenceManager;
 import com.nexusadmin.core.plugin.resolve.VersionManager;
-import com.nexusadmin.core.plugin.resolve.version.DefaultVersionManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -47,65 +41,14 @@ public class BootstrapConfig {
     // ==================== 核心组件初始化 ====================
 
     /**
-     * 扩展注册中心（插件级别）。
-     *
-     * @return ExtensionRegistry 实例
-     */
-    @Bean
-    public ExtensionRegistry extensionRegistry() {
-        return new DefaultExtensionRegistry();
-    }
-
-    /**
-     * 插件注册中心。
-     *
-     * @return PluginRegistry 实例
-     */
-    @Bean
-    public PluginRegistry pluginRegistry() {
-        return new DefaultPluginRegistry();
-    }
-
-    /**
-     * 事件总线。
-     *
-     * @return EventBus 实例
-     */
-    @Bean
-    public EventBus eventBus() {
-        return new SyncEventBus();
-    }
-
-    /**
-     * 版本管理器。
-     *
-     * @return VersionManager 实例
-     */
-    @Bean
-    public VersionManager versionManager() {
-        return new DefaultVersionManager();
-    }
-
-    /**
      * 运行模式。
      *
-     * @param properties 平台配置属性
+     * @param properties 插件配置属性
      * @return RuntimeMode 实例
      */
     @Bean
-    public RuntimeMode runtimeMode(PlatformProperties properties) {
-        return properties.getPlugin().getRuntimeMode();
-    }
-
-    /**
-     * 依赖管理器。
-     *
-     * @param versionManager 版本管理器
-     * @return DependenceManager 实例
-     */
-    @Bean
-    public DependenceManager dependenceManager(VersionManager versionManager) {
-        return new DefaultDependenceManager(versionManager);
+    public RuntimeMode runtimeMode(PluginProperties properties) {
+        return properties.getRuntimeMode();
     }
 
     /**
@@ -136,31 +79,21 @@ public class BootstrapConfig {
     /**
      * 插件源列表。
      *
-     * @param properties 平台配置属性
+     * @param properties 插件配置属性
      * @param parsers    描述文件解析器列表
      * @return 插件源列表
      */
     @Bean
     public List<PluginSource> pluginSources(
-            PlatformProperties properties,
+            PluginProperties properties,
             List<PluginDescriptorParser> parsers) {
         return List.of(
                 new LocalDirectorySource(
-                        Paths.get(properties.getPlugin().getPath()),
+                        Paths.get(properties.getPath()),
                         parsers
                 ),
                 new ClasspathPluginSource()
         );
-    }
-
-    /**
-     * 插件加载器。
-     *
-     * @return 插件加载器
-     */
-    @Bean
-    public PluginLoader pluginLoader() {
-        return new DefaultPluginLoader();
     }
 
     // ==================== 插件管理器初始化 ====================
@@ -172,7 +105,7 @@ public class BootstrapConfig {
      * @param extensionRegistry 扩展注册中心
      * @param eventBus          事件总线
      * @param runtimeMode       运行模式
-     * @param properties        平台配置属性
+     * @param properties        插件配置属性
      * @param sources           插件源列表
      * @param finders           描述文件查找器列表
      * @param parsers           描述文件解析器列表
@@ -187,7 +120,7 @@ public class BootstrapConfig {
             ExtensionRegistry extensionRegistry,
             EventBus eventBus,
             RuntimeMode runtimeMode,
-            PlatformProperties properties,
+            PluginProperties properties,
             List<PluginSource> sources,
             List<PluginDescriptorFinder> finders,
             List<PluginDescriptorParser> parsers,
@@ -200,15 +133,13 @@ public class BootstrapConfig {
                 extensionRegistry,
                 eventBus,
                 runtimeMode,
-                properties.getPlugin().getCoreVersion(),
-                Paths.get(properties.getPlugin().getDataPath()),
+                Paths.get(properties.getDataPath()),
                 sources,
                 finders,
                 parsers,
                 versionManager,
                 dependenceManager,
-                pluginLoader,
-                properties.getPlugin().isAutoStart()
+                pluginLoader
         );
     }
 

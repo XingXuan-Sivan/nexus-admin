@@ -7,14 +7,14 @@ package com.nexusadmin.core.plugin;
 public enum RuntimeMode {
 
     /**
-     * 开发模式。
-     * <p>启用热加载、详细日志、调试功能等。</p>
+     * 开发模式（DEV）。
+     * <p>启用热加载、详细日志、调试功能等，适用于本地开发和测试环境。</p>
      */
-    DEVELOPMENT,
+    DEV,
 
     /**
-     * 部署模式（生产模式）。
-     * <p>启用性能优化、缓存、安全限制等，禁用开发专用策略。</p>
+     * 生产模式（PROD）。
+     * <p>启用性能优化、缓存、安全限制等，禁用开发专用策略，适用于正式部署环境。</p>
      */
-    DEPLOYMENT
+    PROD
 }

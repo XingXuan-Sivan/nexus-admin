@@ -48,8 +48,6 @@ public class DefaultPluginManager extends AbstractPluginManager {
     private final DependenceManager dependenceManager;
     private final PluginLoader pluginLoader;
 
-    private final boolean autoStart;
-
     /**
      * 构造默认插件管理器。
      *
@@ -57,7 +55,6 @@ public class DefaultPluginManager extends AbstractPluginManager {
      * @param extensionRegistry 扩展注册中心
      * @param eventBus          事件总线
      * @param runtimeMode       运行模式
-     * @param coreVersion       核心版本号
      * @param pluginsDataRoot   插件数据根目录
      * @param sources           插件源列表
      * @param finders           描述文件查找器列表
@@ -65,29 +62,25 @@ public class DefaultPluginManager extends AbstractPluginManager {
      * @param versionManager    版本管理器
      * @param dependenceManager 依赖管理器
      * @param pluginLoader      插件加载器
-     * @param autoStart         是否自动启动
      */
     public DefaultPluginManager(PluginRegistry pluginRegistry,
                                 ExtensionRegistry extensionRegistry,
                                 EventBus eventBus,
                                 RuntimeMode runtimeMode,
-                                String coreVersion,
                                 Path pluginsDataRoot,
                                 List<PluginSource> sources,
                                 List<PluginDescriptorFinder> finders,
                                 List<PluginDescriptorParser> parsers,
                                 VersionManager versionManager,
                                 DependenceManager dependenceManager,
-                                PluginLoader pluginLoader,
-                                boolean autoStart) {
-        super(pluginRegistry, extensionRegistry, eventBus, runtimeMode, coreVersion, pluginsDataRoot);
+                                PluginLoader pluginLoader) {
+        super(pluginRegistry, extensionRegistry, eventBus, runtimeMode, pluginsDataRoot);
         this.sources = List.copyOf(sources != null ? sources : List.of());
         this.finders = List.copyOf(finders != null ? finders : List.of());
         this.parsers = List.copyOf(parsers != null ? parsers : List.of());
         this.versionManager = versionManager;
         this.dependenceManager = dependenceManager;
         this.pluginLoader = pluginLoader;
-        this.autoStart = autoStart;
 
         // 初始化配置中心组件
         initializeConfigComponents();
@@ -145,13 +138,13 @@ public class DefaultPluginManager extends AbstractPluginManager {
     }
 
     /**
-     * 过滤查找器，DEPLOYMENT 模式下移除 DevDirectoryFinder 和 PackedDirectoryFinder。
+     * 过滤查找器，PROD 模式下移除 DevDirectoryFinder 和 PackedDirectoryFinder。
      *
      * @param finders 原始查找器列表
      * @return 过滤后的查找器列表
      */
     private List<PluginDescriptorFinder> filterFinders(List<PluginDescriptorFinder> finders) {
-        if (runtimeMode != RuntimeMode.DEPLOYMENT) {
+        if (runtimeMode != RuntimeMode.PROD) {
             return finders;
         }
         return finders.stream()
@@ -160,13 +153,13 @@ public class DefaultPluginManager extends AbstractPluginManager {
     }
 
     /**
-     * 过滤插件源，DEPLOYMENT 模式下移除 ClasspathPluginSource。
+     * 过滤插件源，PROD 模式下移除 ClasspathPluginSource。
      *
      * @param sources 原始插件源列表
      * @return 过滤后的插件源列表
      */
     private List<PluginSource> filterSources(List<PluginSource> sources) {
-        if (runtimeMode != RuntimeMode.DEPLOYMENT) {
+        if (runtimeMode != RuntimeMode.PROD) {
             return sources;
         }
         return sources.stream()
@@ -176,7 +169,12 @@ public class DefaultPluginManager extends AbstractPluginManager {
 
     @Override
     protected void autoStartIfNecessary() {
-        if (!autoStart) {
+        // 从配置中心读取自动启动配置，若不可用则默认为 true
+        boolean shouldAutoStart = configManager != null
+                ? configManager.get("platform", "autoStart", Boolean.class).orElse(true)
+                : true;
+
+        if (!shouldAutoStart) {
             return;
         }
 

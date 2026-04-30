@@ -14,13 +14,6 @@
     <packaging>jar</packaging>
 
     <dependencies>
-        <!-- 系统核心模块依赖 -->
-        <dependency>
-            <groupId>com.nexusadmin</groupId>
-            <artifactId>nexus-admin-core</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
         <!-- API 模块依赖 -->
         <dependency>
             <groupId>com.nexusadmin</groupId>

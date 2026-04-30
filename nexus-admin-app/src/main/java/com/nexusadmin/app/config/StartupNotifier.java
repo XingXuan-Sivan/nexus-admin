@@ -1,6 +1,6 @@
 package com.nexusadmin.app.config;
 
-import com.nexusadmin.app.config.properties.PlatformProperties;
+import com.nexusadmin.core.config.ConfigManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -19,18 +19,18 @@ import java.net.InetAddress;
 public class StartupNotifier implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(StartupNotifier.class);
 
-    private final PlatformProperties platformProperties;
+    private final ConfigManager configManager;
     private final ApplicationContext applicationContext;
 
     /**
      * 构造启动完成通知器。
      *
-     * @param platformProperties 平台配置属性
+     * @param configManager      配置管理器
      * @param applicationContext Spring 应用上下文
      */
-    public StartupNotifier(PlatformProperties platformProperties,
+    public StartupNotifier(ConfigManager configManager,
                            ApplicationContext applicationContext) {
-        this.platformProperties = platformProperties;
+        this.configManager = configManager;
         this.applicationContext = applicationContext;
     }
 
@@ -46,11 +46,15 @@ public class StartupNotifier implements ApplicationRunner {
             String port = applicationContext.getEnvironment().getProperty("server.port", "8080");
             String contextPath = applicationContext.getEnvironment().getProperty("server.servlet.context-path", "");
 
+            String name = configManager.get("platform", "infoName").orElse("Nexus Admin");
+            String version = configManager.get("platform", "infoVersion").orElse("0.1.0-SNAPSHOT");
+            String description = configManager.get("platform", "infoDescription").orElse("插件化系统拓展平台");
+
             log.info("");
             log.info("===============================================");
-            log.info("  {} 启动成功！", platformProperties.getInfo().getName());
-            log.info("  版本：{}", platformProperties.getInfo().getVersion());
-            log.info("  描述：{}", platformProperties.getInfo().getDescription());
+            log.info("  {} 启动成功！", name);
+            log.info("  版本：{}", version);
+            log.info("  描述：{}", description);
             log.info("-----------------------------------------------");
             log.info("  本地访问地址：http://localhost:{}{}", port, contextPath);
             log.info("  外部访问地址：http://{}:{}{}", host, port, contextPath);

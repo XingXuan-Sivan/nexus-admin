@@ -43,7 +43,6 @@ public abstract class AbstractPluginManager implements PluginManager {
     protected final ExtensionRegistry extensionRegistry;
     protected final EventBus eventBus;
     protected final RuntimeMode runtimeMode;
-    protected final String coreVersion;
     protected final Path pluginsDataRoot;
 
     protected PluginDiscoverer pluginDiscoverer;
@@ -74,20 +73,17 @@ public abstract class AbstractPluginManager implements PluginManager {
      * @param extensionRegistry 扩展注册中心
      * @param eventBus          事件总线
      * @param runtimeMode       运行模式
-     * @param coreVersion       核心版本号
      * @param pluginsDataRoot   插件数据根目录
      */
     protected AbstractPluginManager(PluginRegistry pluginRegistry,
                                     ExtensionRegistry extensionRegistry,
                                     EventBus eventBus,
                                     RuntimeMode runtimeMode,
-                                    String coreVersion,
                                     Path pluginsDataRoot) {
         this.pluginRegistry = Objects.requireNonNull(pluginRegistry, "插件注册中心不能为空");
         this.extensionRegistry = Objects.requireNonNull(extensionRegistry, "扩展注册中心不能为空");
         this.eventBus = Objects.requireNonNull(eventBus, "事件总线不能为空");
         this.runtimeMode = Objects.requireNonNull(runtimeMode, "运行模式不能为空");
-        this.coreVersion = Objects.requireNonNull(coreVersion, "核心版本号不能为空");
         this.pluginsDataRoot = Objects.requireNonNull(pluginsDataRoot, "插件数据根目录不能为空");
     }
 
@@ -143,6 +139,11 @@ public abstract class AbstractPluginManager implements PluginManager {
 
         // Workspace 采用懒加载，首次访问时才创建目录
         PluginWorkspace workspace = new PluginWorkspace(pluginsDataRoot.resolve("workspace").resolve(pluginId));
+
+        // 从配置中心读取核心版本号，若不可用则使用默认值
+        String coreVersion = configManager != null
+                ? configManager.get("platform", "coreVersion").orElse("1.0.0")
+                : "1.0.0";
 
         PlatformAccess platform = new PlatformAccess(
                 extensionRegistry,

@@ -1,6 +1,6 @@
-package com.nexusadmin.api.management.impl;
+package com.nexusadmin.api.facade.impl;
 
-import com.nexusadmin.api.management.ConfigAdminFacade;
+import com.nexusadmin.api.facade.ConfigFacade;
 import com.nexusadmin.core.config.ConfigManager;
 
 import java.util.ArrayList;
@@ -12,7 +12,7 @@ import java.util.Optional;
 /**
  * 配置管理门面实现类。
  */
-public class ConfigAdminFacadeImpl implements ConfigAdminFacade {
+public class ConfigFacadeImpl implements ConfigFacade {
 
     private final ConfigManager configManager;
 
@@ -21,7 +21,7 @@ public class ConfigAdminFacadeImpl implements ConfigAdminFacade {
      *
      * @param configManager 配置管理器
      */
-    public ConfigAdminFacadeImpl(ConfigManager configManager) {
+    public ConfigFacadeImpl(ConfigManager configManager) {
         this.configManager = configManager;
     }
 

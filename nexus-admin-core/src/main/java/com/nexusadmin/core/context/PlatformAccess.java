@@ -104,7 +104,7 @@ public final class PlatformAccess {
      * @return 如果是开发模式返回 true
      */
     public boolean isDevelopment() {
-        return runtimeMode == RuntimeMode.DEVELOPMENT;
+        return runtimeMode == RuntimeMode.DEV;
     }
 
     /**
@@ -113,7 +113,7 @@ public final class PlatformAccess {
      * @return 如果是部署模式返回 true
      */
     public boolean isDeployment() {
-        return runtimeMode == RuntimeMode.DEPLOYMENT;
+        return runtimeMode == RuntimeMode.PROD;
     }
 
     /**

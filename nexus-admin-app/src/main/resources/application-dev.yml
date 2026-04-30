@@ -1,10 +1,9 @@
 server:
   port: 8081
 
-platform:
-  plugin:
-    # 开发环境使用开发模式
-    runtime-mode: DEVELOPMENT
+plugin:
+  # 运行模式：DEV（开发）、PROD（生产）
+  runtime-mode: DEV
 
 logging:
   level:

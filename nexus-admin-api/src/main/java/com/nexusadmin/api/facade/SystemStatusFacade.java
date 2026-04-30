@@ -1,4 +1,4 @@
-package com.nexusadmin.api.management;
+package com.nexusadmin.api.facade;
 
 /**
  * 系统状态门面接口，提供系统运行状态的查询能力。
