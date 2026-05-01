@@ -1,6 +1,6 @@
 package com.nexusadmin.api.config;
 
-import com.nexusadmin.api.auth.AuthChallengeHandler;
+import com.nexusadmin.api.extension.auth.AuthChallengeHandler;
 import com.nexusadmin.api.auth.AuthFilter;
 import com.nexusadmin.api.auth.BootstrapAuthChallengeHandler;
 import com.nexusadmin.api.auth.BootstrapAuthProvider;

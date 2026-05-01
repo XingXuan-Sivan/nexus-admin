@@ -1,5 +1,6 @@
 package com.nexusadmin.api.auth;
 
+import com.nexusadmin.api.extension.auth.AuthChallengeHandler;
 import com.nexusadmin.api.extension.auth.AuthProvider.AuthRequest;
 import com.nexusadmin.api.extension.auth.AuthProvider.AuthResult;
 import com.nexusadmin.api.extension.auth.AuthProvider.AuthStatus;

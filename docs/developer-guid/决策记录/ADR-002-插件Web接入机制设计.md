@@ -1,6 +1,6 @@
-# admin-panel 与插件 Web 接入机制设计文档（兼容现有架构）
+# 插件Web接入机制设计
 
-------
+---
 
 # 一、设计前提（必须遵守）
 
@@ -13,7 +13,7 @@
 4. 不允许破坏已有核心结构
 ```
 
-------
+---
 
 # 二、问题定义
 
@@ -35,7 +35,7 @@ Spring MVC 仅识别 Root ApplicationContext 中的 Controller
 插件中的 @RestController 无法生效
 ```
 
-------
+---
 
 # 三、设计目标
 
@@ -47,7 +47,7 @@ Spring MVC 仅识别 Root ApplicationContext 中的 Controller
 5. 与现有 PluginSpringManager 对齐（扩展而非重构）
 ```
 
-------
+---
 
 # 四、总体方案
 
@@ -57,7 +57,7 @@ Spring MVC 仅识别 Root ApplicationContext 中的 Controller
 子容器隔离 + HandlerMapping 动态注册（桥接模式）
 ```
 
-------
+---
 
 ## 4.1 架构结构
 
@@ -71,7 +71,7 @@ WebEndpointBridge（桥接层）
 RequestMappingHandlerMapping（主容器）
 ```
 
-------
+---
 
 ## 4.2 关键思想
 
@@ -80,11 +80,11 @@ RequestMappingHandlerMapping（主容器）
 而是注册 HandlerMapping
 ```
 
-------
+---
 
 # 五、模块设计
 
-------
+---
 
 # 5.1 新增模块：web-bridge（或放入 integration 层）
 
@@ -97,11 +97,11 @@ plugin-integration
    └─ PluginWebRegistry
 ```
 
-------
+---
 
 # 5.2 组件说明
 
-------
+---
 
 ## 5.2.1 WebEndpointRegistrar（核心接口）
 
@@ -114,7 +114,7 @@ public interface WebEndpointRegistrar {
 }
 ```
 
-------
+---
 
 ## 5.2.2 PluginWebRegistry（状态存储）
 
@@ -131,7 +131,7 @@ public class PluginWebRegistry {
 }
 ```
 
-------
+---
 
 ## 5.2.3 MappingResolver（注解解析器）
 
@@ -142,7 +142,7 @@ public interface MappingResolver {
 }
 ```
 
-------
+---
 
 ## 5.2.4 SpringMappingResolver（实现）
 
@@ -154,7 +154,7 @@ public interface MappingResolver {
 - @GetMapping / @PostMapping / ...
 ```
 
-------
+---
 
 ## 5.2.5 SpringWebEndpointRegistrar（实现类）
 
@@ -198,11 +198,11 @@ public class SpringWebEndpointRegistrar implements WebEndpointRegistrar {
 }
 ```
 
-------
+---
 
 # 六、与 PluginSpringManager 集成（关键）
 
-------
+---
 
 ## 6.1 扩展点（不修改核心逻辑）
 
@@ -223,7 +223,7 @@ public interface PluginSpringManager {
 }
 ```
 
-------
+---
 
 ## 6.2 Web 注册挂载点
 
@@ -232,7 +232,7 @@ afterStart → 注册 Web
 beforeStop → 卸载 Web
 ```
 
-------
+---
 
 ## 6.3 实现示例
 
@@ -263,11 +263,11 @@ public class DefaultPluginSpringManager implements PluginSpringManager {
 }
 ```
 
-------
+---
 
 # 七、路径隔离机制
 
-------
+---
 
 ## 7.1 设计目标
 
@@ -275,7 +275,7 @@ public class DefaultPluginSpringManager implements PluginSpringManager {
 避免不同插件 API 冲突
 ```
 
-------
+---
 
 ## 7.2 方案
 
@@ -285,7 +285,7 @@ public class DefaultPluginSpringManager implements PluginSpringManager {
 /api/**
 ```
 
-------
+---
 
 ## 7.3 实现方式
 
@@ -297,11 +297,11 @@ String prefix = "/api";
 newPath = prefix + originalPath;
 ```
 
-------
+---
 
 # 八、admin-panel 插件接入
 
-------
+---
 
 ## 8.1 Controller 正常编写
 
@@ -311,7 +311,7 @@ newPath = prefix + originalPath;
 public class PluginController {}
 ```
 
-------
+---
 
 ## 8.2 实际访问路径
 
@@ -319,7 +319,7 @@ public class PluginController {}
 /api/admin/plugins
 ```
 
-------
+---
 
 ## 8.3 优化（可选）
 
@@ -335,11 +335,11 @@ public class PluginController {}
 /admin/**
 ```
 
-------
+---
 
 # 九、认证集成
 
-------
+---
 
 ## 9.1 Filter 注册位置
 
@@ -347,7 +347,7 @@ public class PluginController {}
 Root Context（主容器）
 ```
 
-------
+---
 
 ## 9.2 插件提供能力
 
@@ -355,7 +355,7 @@ Root Context（主容器）
 AuthProvider（来自 api）
 ```
 
-------
+---
 
 ## 9.3 自动聚合
 
@@ -363,7 +363,7 @@ AuthProvider（来自 api）
 List<AuthProvider> providers
 ```
 
-------
+---
 
 ## 9.4 生命周期
 
@@ -372,11 +372,11 @@ List<AuthProvider> providers
 插件卸载 → provider 自动移除
 ```
 
-------
+---
 
 # 十、错误处理
 
-------
+---
 
 ## 10.1 Mapping 冲突检测
 
@@ -384,7 +384,7 @@ List<AuthProvider> providers
 handlerMapping.getHandlerMethods()
 ```
 
-------
+---
 
 ## 10.2 注册失败策略
 
@@ -392,7 +392,7 @@ handlerMapping.getHandlerMethods()
 记录日志 + 跳过该 Controller
 ```
 
-------
+---
 
 ## 10.3 卸载安全
 
@@ -400,11 +400,11 @@ handlerMapping.getHandlerMethods()
 必须保证 mapping 全部移除
 ```
 
-------
+---
 
 # 十一、扩展能力（未来）
 
-------
+---
 
 ## 11.1 WebEndpointContributor
 
@@ -414,7 +414,7 @@ public interface WebEndpointContributor {
 }
 ```
 
-------
+---
 
 ## 11.2 非 Spring Controller 支持
 
@@ -422,7 +422,7 @@ public interface WebEndpointContributor {
 直接注册 HandlerMethod
 ```
 
-------
+---
 
 ## 11.3 UI 扩展（admin-panel）
 
@@ -430,11 +430,11 @@ public interface WebEndpointContributor {
 AdminExtension（已有设计）
 ```
 
-------
+---
 
 # 十二、设计优势
 
-------
+---
 
 ## ✔ 完整插件隔离
 
@@ -442,7 +442,7 @@ AdminExtension（已有设计）
 插件不进入主容器
 ```
 
-------
+---
 
 ## ✔ 支持卸载
 
@@ -450,7 +450,7 @@ AdminExtension（已有设计）
 通过 registry 精确移除 mapping
 ```
 
-------
+---
 
 ## ✔ 与现有系统完全兼容
 
@@ -458,7 +458,7 @@ AdminExtension（已有设计）
 不修改状态机 / PluginManager
 ```
 
-------
+---
 
 ## ✔ 可演进
 
@@ -468,7 +468,7 @@ AdminExtension（已有设计）
 - 分布式 control plane
 ```
 
-------
+---
 
 # 十三、最终结论
 

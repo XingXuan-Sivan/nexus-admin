@@ -1,4 +1,4 @@
-package com.nexusadmin.api.auth;
+package com.nexusadmin.api.extension.auth;
 
 import com.nexusadmin.core.extension.ExtensionPoint;
 import jakarta.servlet.http.HttpServletRequest;

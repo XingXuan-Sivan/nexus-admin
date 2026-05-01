@@ -1,5 +1,6 @@
 package com.nexusadmin.api.auth;
 
+import com.nexusadmin.api.extension.auth.AuthChallengeHandler;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;

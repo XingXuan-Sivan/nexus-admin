@@ -1,107 +1,117 @@
 package com.nexusadmin.api.config;
 
+import com.nexusadmin.core.CoreRuntime;
 import com.nexusadmin.core.event.EventBus;
-import com.nexusadmin.core.event.SyncEventBus;
-import com.nexusadmin.core.extension.DefaultExtensionRegistry;
 import com.nexusadmin.core.extension.ExtensionRegistry;
-import com.nexusadmin.core.plugin.DefaultPluginRegistry;
 import com.nexusadmin.core.plugin.PluginRegistry;
-import com.nexusadmin.core.plugin.loader.DefaultPluginLoader;
 import com.nexusadmin.core.plugin.loader.PluginLoader;
-import com.nexusadmin.core.plugin.resolve.DefaultDependenceManager;
 import com.nexusadmin.core.plugin.resolve.DependenceManager;
 import com.nexusadmin.core.plugin.resolve.VersionManager;
-import com.nexusadmin.core.plugin.resolve.version.DefaultVersionManager;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Core 模块默认装配配置。
+ * Core 模块 Spring 桥接配置。
  * <p>
- * 负责在 Spring 容器中装配 core 模块的默认实现，所有 Bean 均带 {@link ConditionalOnMissingBean}
- * 保护，允许应用层或插件通过声明同类型 Bean 进行覆盖。
+ * 将 CoreRuntime 装配的核心组件桥接到 Spring 容器，不参与组件创建与依赖注入逻辑——
+ * 组件创建由 {@link CoreRuntime} 全权负责。
  * <p>
- * <strong>装配顺序说明：</strong>
- * <ul>
- *   <li>EventBus 优先于 ExtensionRegistry，因为后者依赖前者发布扩展变更事件</li>
- *   <li>VersionManager 优先于 DependenceManager，因为后者依赖前者进行版本兼容性校验</li>
- * </ul>
+ * 所有 Bean 均带 {@link ConditionalOnMissingBean} 保护，应用层可通过声明同类型 Bean
+ * 覆盖任意组件。也可直接声明 {@link CoreRuntime} Bean 一次性替换全部组件。
+ * <p>
+ * <strong>覆盖优先级：</strong>app @Bean &gt; api @ConditionalOnMissingBean &gt; CoreRuntime 默认值
  */
 @Configuration
 public class CoreAutoConfig {
 
     /**
-     * 默认事件总线（同步实现）。
+     * Core 运行时聚合根。
+     * <p>声明此类型的 Bean 可一次性替换所有核心组件。</p>
+     *
+     * @return CoreRuntime 实例
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public CoreRuntime coreRuntime() {
+        return CoreRuntime.defaults();
+    }
+
+    /**
+     * 事件总线。
      * <p>可通过声明同类型 Bean 覆盖此默认装配</p>
      *
+     * @param rt Core 运行时
      * @return EventBus 实例
      */
     @Bean
     @ConditionalOnMissingBean
-    public EventBus eventBus() {
-        return new SyncEventBus();
+    public EventBus eventBus(CoreRuntime rt) {
+        return rt.eventBus();
     }
 
     /**
-     * 默认扩展注册中心。
+     * 扩展注册中心。
      * <p>可通过声明同类型 Bean 覆盖此默认装配</p>
      *
-     * @param eventBus 事件总线，用于发布扩展变更事件
+     * @param rt Core 运行时
      * @return ExtensionRegistry 实例
      */
     @Bean
     @ConditionalOnMissingBean
-    public ExtensionRegistry extensionRegistry(EventBus eventBus) {
-        return new DefaultExtensionRegistry(eventBus);
+    public ExtensionRegistry extensionRegistry(CoreRuntime rt) {
+        return rt.extensionRegistry();
     }
 
     /**
-     * 默认插件注册中心。
+     * 插件注册中心。
      * <p>可通过声明同类型 Bean 覆盖此默认装配</p>
      *
+     * @param rt Core 运行时
      * @return PluginRegistry 实例
      */
     @Bean
     @ConditionalOnMissingBean
-    public PluginRegistry pluginRegistry() {
-        return new DefaultPluginRegistry();
+    public PluginRegistry pluginRegistry(CoreRuntime rt) {
+        return rt.pluginRegistry();
     }
 
     /**
-     * 默认版本管理器。
+     * 版本管理器。
      * <p>可通过声明同类型 Bean 覆盖此默认装配</p>
      *
+     * @param rt Core 运行时
      * @return VersionManager 实例
      */
     @Bean
     @ConditionalOnMissingBean
-    public VersionManager versionManager() {
-        return new DefaultVersionManager();
+    public VersionManager versionManager(CoreRuntime rt) {
+        return rt.versionManager();
     }
 
     /**
-     * 默认依赖管理器。
+     * 依赖管理器。
      * <p>可通过声明同类型 Bean 覆盖此默认装配</p>
      *
-     * @param versionManager 版本管理器
+     * @param rt Core 运行时
      * @return DependenceManager 实例
      */
     @Bean
     @ConditionalOnMissingBean
-    public DependenceManager dependenceManager(VersionManager versionManager) {
-        return new DefaultDependenceManager(versionManager);
+    public DependenceManager dependenceManager(CoreRuntime rt) {
+        return rt.dependenceManager();
     }
 
     /**
-     * 默认插件加载器。
+     * 插件加载器。
      * <p>可通过声明同类型 Bean 覆盖此默认装配</p>
      *
+     * @param rt Core 运行时
      * @return PluginLoader 实例
      */
     @Bean
     @ConditionalOnMissingBean
-    public PluginLoader pluginLoader() {
-        return new DefaultPluginLoader();
+    public PluginLoader pluginLoader(CoreRuntime rt) {
+        return rt.pluginLoader();
     }
 }
