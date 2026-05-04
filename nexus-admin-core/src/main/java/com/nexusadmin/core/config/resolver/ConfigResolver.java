@@ -1,5 +1,6 @@
 package com.nexusadmin.core.config.resolver;
 
+import com.nexusadmin.core.config.resolver.impl.FileConfigSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,7 +117,7 @@ public class ConfigResolver {
      */
     public void invalidateCache(String scope) {
         for (ConfigSource source : sources) {
-            if (source instanceof com.nexusadmin.core.config.resolver.FileConfigSource fileSource) {
+            if (source instanceof FileConfigSource fileSource) {
                 fileSource.invalidateCache(scope);
             }
         }

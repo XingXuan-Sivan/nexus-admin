@@ -1,5 +1,6 @@
 package com.nexusadmin.api.auth;
 
+import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.api.extension.auth.AuthChallengeHandler;
 import com.nexusadmin.api.extension.auth.AuthProvider.AuthRequest;
 import com.nexusadmin.api.extension.auth.AuthProvider.AuthResult;
@@ -25,14 +26,23 @@ import java.util.Base64;
 /**
  * 管理面板认证过滤器。
  * <p>
- * 拦截所有 /admin/** 请求，执行认证检查。
+ * 拦截所有 /admin/v1/** 请求，执行认证检查。
  * <p>
  * <strong>凭证来源优先级：</strong>
  * <ol>
+ *   <li>Bearer Token（Authorization: Bearer xxx）</li>
  *   <li>Session 中已认证的用户信息</li>
  *   <li>Basic 认证头（Authorization: Basic xxx）</li>
  *   <li>表单提交参数（username / password）</li>
  * </ol>
+ * <p>
+ * <strong>公开端点（无需认证）：</strong>
+ * <ul>
+ *   <li>POST /admin/v1/auth/login</li>
+ *   <li>/v3/api-docs/**</li>
+ *   <li>/doc.html</li>
+ *   <li>/webjars/**</li>
+ * </ul>
  * <p>
  * <strong>认证失败处理：</strong>
  * 委托给 {@link AuthChallengeHandler}，由其决定返回 401 JSON 响应还是 HTML 登录页面，
@@ -43,9 +53,10 @@ public class AuthFilter implements Filter {
     private static final Logger log = LoggerFactory.getLogger(AuthFilter.class);
 
     private static final String AUTH_HEADER = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
     private static final String BASIC_PREFIX = "Basic ";
-    private static final String ADMIN_PATH_PREFIX = "/admin";
-    private static final String LOGIN_PATH = "/admin/auth/login";
+    private static final String ADMIN_PATH_PREFIX = "/admin/v1";
+    private static final String LOGIN_PATH = "/admin/v1/auth/login";
     private static final String SESSION_ATTR_USER = "authenticatedUser";
 
     private final CompositeAuthProvider authProvider;
@@ -78,8 +89,14 @@ public class AuthFilter implements Filter {
 
         String requestPath = httpRequest.getRequestURI();
 
-        // 只拦截 /admin/** 路径
+        // 只拦截 /admin/v1/** 路径
         if (!requestPath.startsWith(ADMIN_PATH_PREFIX)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // 检查公开端点白名单
+        if (isPublicEndpoint(httpRequest)) {
             chain.doFilter(request, response);
             return;
         }
@@ -92,13 +109,31 @@ public class AuthFilter implements Filter {
             return;
         }
 
-        // 2. 尝试从请求中提取凭证
+        // 2. 尝试从请求中提取凭证（按优先级）
+
+        // 2.1 Bearer Token
+        String bearerToken = extractBearerToken(httpRequest);
+        if (bearerToken != null) {
+            AuthResult authResult = authProvider.validateToken(bearerToken, buildContext(httpRequest));
+            if (authResult.status() == AuthStatus.SUCCESS) {
+                log.debug("管理面板 Bearer Token 认证通过，用户: {}", authResult.userId());
+                setSessionUser(httpRequest, authResult.userId());
+                chain.doFilter(request, response);
+                return;
+            } else {
+                log.warn("管理面板 Bearer Token 认证失败: {}", authResult.message());
+                resolveChallengeHandler().handleChallenge(httpRequest, httpResponse, authResult.message());
+                return;
+            }
+        }
+
+        // 2.2 Basic Auth 和表单参数
         Credentials credentials = extractCredentials(httpRequest);
 
         if (credentials != null) {
             // 3. 执行认证
             AuthRequest authRequest = new AuthRequest(credentials.username, credentials.password, null);
-            AuthResult authResult = authProvider.authenticate(authRequest, null);
+            AuthResult authResult = authProvider.authenticate(authRequest, buildContext(httpRequest));
 
             if (authResult.status() == AuthStatus.SUCCESS) {
                 log.debug("管理面板认证成功，用户: {}", authResult.userId());
@@ -139,6 +174,31 @@ public class AuthFilter implements Filter {
     }
 
     /**
+     * 检查当前请求是否为公开端点（无需认证）。
+     *
+     * @param request HTTP 请求
+     * @return 是否为公开端点
+     */
+    private boolean isPublicEndpoint(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+
+        if ("POST".equalsIgnoreCase(method) && LOGIN_PATH.equals(path)) {
+            return true;
+        }
+        if (path.startsWith("/v3/api-docs/")) {
+            return true;
+        }
+        if ("/doc.html".equals(path)) {
+            return true;
+        }
+        if (path.startsWith("/webjars/")) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * 从请求中提取认证凭证。
      * <p>
      * 按优先级依次尝试 Basic 认证头和表单参数。
@@ -153,8 +213,22 @@ public class AuthFilter implements Filter {
             return basicCreds;
         }
 
-        // 尝试表单参数（仅对 POST /admin/auth/login 生效）
+        // 尝试表单参数（仅对 POST /admin/v1/auth/login 生效）
         return extractFormCredentials(request);
+    }
+
+    /**
+     * 从 Bearer Token 认证头提取 Token。
+     *
+     * @param request HTTP 请求
+     * @return Bearer Token，不存在或格式错误时返回 null
+     */
+    private String extractBearerToken(HttpServletRequest request) {
+        String authHeader = request.getHeader(AUTH_HEADER);
+        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(BEARER_PREFIX)) {
+            return null;
+        }
+        return authHeader.substring(BEARER_PREFIX.length()).trim();
     }
 
     /**
@@ -179,7 +253,7 @@ public class AuthFilter implements Filter {
     /**
      * 从表单参数提取凭证。
      * <p>
-     * 仅对 POST /admin/auth/login 请求生效，避免意外读取其他 POST 请求的参数。
+     * 仅对 POST /admin/v1/auth/login 请求生效，避免意外读取其他 POST 请求的参数。
      *
      * @param request HTTP 请求
      * @return 凭证信息，无法提取时返回 null
@@ -252,9 +326,23 @@ public class AuthFilter implements Filter {
     }
 
     /**
+     * 构建调用上下文。
+     *
+     * @param request HTTP 请求
+     * @return 调用上下文
+     */
+    private InvocationContext buildContext(HttpServletRequest request) {
+        return InvocationContext.builder()
+                .channelId("HTTP")
+                .attribute("clientIp", request.getRemoteAddr())
+                .attribute("userAgent", request.getHeader("User-Agent"))
+                .build();
+    }
+
+    /**
      * 获取登录成功后的重定向地址。
      * <p>
-     * 优先使用 Session 中保存的原始请求地址，否则重定向到 /admin。
+     * 优先使用 Session 中保存的原始请求地址，否则重定向到 /admin/v1。
      *
      * @param request HTTP 请求
      * @return 重定向地址
@@ -268,7 +356,7 @@ public class AuthFilter implements Filter {
                 return url;
             }
         }
-        return "/admin";
+        return "/admin/v1";
     }
 
     /**

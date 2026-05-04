@@ -1,0 +1,1107 @@
+# ADR-005: 管理面板 RESTful API 与前端可拓展体系设计
+
+------
+
+## 背景与问题
+
+Nexus Admin 采用微内核架构，通过 core 模块提供插件生命周期管理、配置中心、扩展点注册等基础能力，通过 api 模块暴露管理面板 RESTful API。前端需要一个可拓展的管理界面，插件应能声明并贡献自己的菜单项、路由页面、仪表盘小部件等 UI 能力。
+
+当前系统面临七个相互关联的设计问题：
+
+1. **API 分区与版本化缺失**：现有 `/admin/**` 和 `/api/**` 两个分区缺少版本控制，未来 API 演进缺乏预留空间；管理面板 API 内部未按职责细化命名空间，随着功能增长将难以维护。
+
+2. **插件 UI 贡献声明机制缺失**：前端没有标准化的插件 UI 扩展协议，插件无法声明自己的菜单项、路由页面、挂载点小部件等，前端可拓展性为零。
+
+3. **配置 Schema 表达力不足**：现有 `schema.yml` 仅支持基础类型（string/integer/boolean/enum），前端无法根据 Schema 动态渲染配置表单（如对象嵌套、数组列表、条件显隐等）。
+
+4. **认证 Token 管理与权限模型未标准化**：现有 AuthProvider 拓展点支持责任链认证（ADR-003 已决策），但缺少标准的 Token 端点（登录/登出/刷新）和权限检查契约，核心业务对象 API（用户、角色）的权限驱动方式未定义。
+
+5. **统一响应体系不完整**：现有 `Result` / `DataResult` 满足基本需要，但缺少分页、批量操作、字段级校验错误等场景支持，错误码体系未按模块分段，错误响应缺乏标准化契约。
+
+6. **插件前端资源接入方式未定义**：插件需要提供自定义前端页面，但前端资源的打包、分发和加载方式尚未决策。
+
+7. **API 发现与元数据服务缺失**：前端和第三方集成无法发现平台提供了哪些 API 端点、哪些插件已注册了哪些能力，API 文档缺失。
+
+------
+
+## 议题一：API 分区、版本化与命名空间策略
+
+### 背景与问题
+
+现有架构已有两个 API 分区：
+
+```text
+/admin/**   → 管理面板内建 API（如 PluginManageController 映射到 /admin/plugins）
+/api/**     → 插件业务 API（由 WebEndpointExtension 机制管理，如 /api/{pluginId}/**）
+```
+
+问题：
+- 无版本控制，API 变更无法向后兼容管理
+- `/admin/**` 下所有 API 扁平排列，无职责分区
+- 未来功能增长后路径冲突风险上升
+
+### 可选方案对比
+
+| 维度 | A. URL路径版本化 `/admin/v1/` ⭐ 推荐 | B. Header版本化 `Accept: application/vnd.nexus.v1+json` | C. 查询参数版本化 `?version=1` | D. 不版本化 |
+|------|--------------------------------------|--------------------------------------------------------|-------------------------------|-----------|
+| 可读性 | ✅ 简洁直观，URL即可识别版本 | ⚠️ 需查看请求头 | ⚠️ 参数混入业务查询 | ✅ 最简洁 |
+| 调试便利性 | ✅ 浏览器/curl直接访问 | ❌ 需工具设置Header | ✅ URL直带参数 | ✅ 无额外信息 |
+| 缓存友好 | ✅ URL不同，CDN天然区分 | ⚠️ 需Vary头配合 | ❌ 参数易丢失 | ✅ 无版本 |
+| 演进能力 | ✅ v1/v2 路径隔离，平滑迁移 | ✅ Header路由，灵活 | ⚠️ 参数路由不直观 | ❌ 变更即破坏 |
+| 业界实践 | GitHub API、Kubernetes API | GitHub API（曾用） | 少数API使用 | 早期项目 |
+| 路由复杂度 | 低（Spring @RequestMapping直配） | 中（需内容协商） | 低 | 最低 |
+
+### 决策结论
+
+1. **管理面板 API 统一前缀 `/admin/v1/**`**，引入版本号为未来演进预留空间
+2. **插件业务 API 保持 `/api/{pluginId}/**` 不变**（由现有 WebEndpointExtension 机制管理，无需版本化——插件自身管理版本）
+3. **管理面板 API 内部按职责分区**：
+
+```text
+/admin/v1/
+  ├── plugins/**     → 插件生命周期管理（列表、启停、装卸）
+  ├── config/**      → 配置中心管理（Schema查询、值读写）
+  ├── system/**      → 系统状态与平台信息
+  ├── ui/**          → UI元数据（菜单、路由、挂载点聚合）
+  ├── auth/**        → 认证端点（登录、登出、Token刷新）
+  ├── users/**       → 核心业务对象（拓展点驱动）
+  └── roles/**       → 核心业务对象（拓展点驱动）
+```
+
+### 决策依据
+
+- URL路径版本化是业界主流实践（GitHub API v3、Kubernetes API v1），直观且调试友好
+- 管理面板 API 是平台内建能力，由平台控制版本演进节奏，版本化收益高、成本低
+- 插件 API 由插件自行管理，不应由平台强加版本约束
+- 职责分区与现有 Controller 映射对齐：`PluginManageController` → `/admin/v1/plugins/**`，`SystemStatusController` → `/admin/v1/system/**`
+
+### 对现有代码的影响
+
+```text
+当前：@RequestMapping("/admin/plugins")
+目标：@RequestMapping("/admin/v1/plugins")
+```
+
+路径变更需同步更新 `AuthFilter` 的 URL Pattern 和前端 API 调用地址。
+
+------
+
+## 议题二：插件 UI 贡献声明机制（contributes 模型）
+
+### 背景与问题
+
+前端需要可拓展，插件应能声明自己的菜单项、路由页面、仪表盘小部件等。类似 VS Code 的 `contributes` 机制——插件在 `package.json` 中声明自己贡献的能力，平台据此动态组装界面。
+
+当前系统：
+- 插件描述文件 `plugin.json` 仅包含 `id`、`version`、`description` 等基本信息
+- 前端完全静态，无法感知插件的存在
+- 没有 UI 扩展协议
+
+### 可选方案对比
+
+| 维度 | A. plugin.json 声明式 ⭐ 推荐 | B. 代码注册式（插件 start 时调用 API 注册） | C. 独立 manifest 文件 |
+|------|-------------------------------|---------------------------------------------|---------------------|
+| 静态可分析 | ✅ 无需启动插件即可读取 | ❌ 必须启动插件后才有数据 | ✅ 可静态读取 |
+| 微内核一致性 | ✅ 声明式，符合「描述与实现分离」理念 | ⚠️ 运行时注册，与微内核解耦目标冲突 | ✅ 分离 |
+| 实现复杂度 | 低（JSON解析） | 中（注册API、生命周期同步） | 中（额外文件管理） |
+| 动态能力 | ⚠️ 纯静态，无法根据运行时状态调整 | ✅ 可根据运行时条件动态注册 | ⚠️ 静态为主 |
+| 插件开发体验 | ✅ 约定优于配置，一目了然 | ⚠️ 需学习注册API | ⚠️ 需维护两个文件 |
+| 文件管理成本 | 低（复用已有 plugin.json） | 低（代码内注册） | 中（额外 manifest.yml/json） |
+
+### 决策结论
+
+在插件描述文件 `plugin.json` 中扩展 `contributes` 字段，采用声明式配置：
+
+```json
+{
+  "id": "analytics-plugin",
+  "version": "1.0.0",
+  "contributes": {
+    "menus": [
+      {
+        "id": "analytics.dashboard",
+        "label": "数据分析",
+        "icon": "chart-line",
+        "path": "/plugins/analytics",
+        "order": 100,
+        "parent": "root",
+        "permissions": ["analytics.view"]
+      }
+    ],
+    "routes": [
+      {
+        "path": "/plugins/analytics",
+        "title": "数据分析",
+        "component": "analytics/pages/Dashboard",
+        "permissions": ["analytics.view"]
+      }
+    ],
+    "mountPoints": [
+      {
+        "slot": "dashboard.widgets",
+        "component": "analytics/components/SummaryWidget",
+        "order": 50,
+        "props": { "title": "数据概览" }
+      }
+    ],
+    "permissions": [
+      { "id": "analytics.view", "label": "查看分析数据" },
+      { "id": "analytics.export", "label": "导出分析报告" }
+    ]
+  }
+}
+```
+
+后端提供 `/admin/v1/ui/manifest` API 聚合所有活跃插件的 contributes，前端据此动态渲染。
+
+### contributes 模型设计
+
+```text
+contributes
+  ├── menus[]        → 菜单项声明
+  │     ├── id           菜单唯一标识（插件内唯一）
+  │     ├── label        显示文本
+  │     ├── icon         图标名（对应图标库）
+  │     ├── path         点击后跳转的路由路径
+  │     ├── order        排序权重（升序排列）
+  │     ├── parent       父菜单ID（"root" 表示顶级）
+  │     └── permissions  所需权限标识列表
+  ├── routes[]        → 路由页面声明
+  │     ├── path         路由路径
+  │     ├── title        页面标题
+  │     ├── component    前端组件路径（相对于插件前端资源根目录）
+  │     └── permissions  所需权限标识列表
+  ├── mountPoints[]   → 挂载点小部件声明
+  │     ├── slot         挂载点标识（平台预定义：dashboard.widgets, sidebar.panels 等）
+  │     ├── component    前端组件路径
+  │     ├── order        排序权重
+  │     └── props        传递给组件的静态属性
+  └── permissions[]   → 权限声明
+        ├── id           权限标识（插件内唯一）
+        └── label        权限显示名称
+```
+
+### UI Manifest API 设计
+
+```text
+GET /admin/v1/ui/manifest
+
+Response:
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "menus": [
+      { "id": "analytics.dashboard", "label": "数据分析", "icon": "chart-line",
+        "path": "/plugins/analytics", "order": 100, "parent": "root",
+        "permissions": ["analytics.view"], "pluginId": "analytics-plugin" }
+    ],
+    "routes": [
+      { "path": "/plugins/analytics", "title": "数据分析",
+        "component": "analytics/pages/Dashboard",
+        "permissions": ["analytics.view"], "pluginId": "analytics-plugin" }
+    ],
+    "mountPoints": {
+      "dashboard.widgets": [
+        { "component": "analytics/components/SummaryWidget", "order": 50,
+          "props": { "title": "数据概览" }, "pluginId": "analytics-plugin" }
+      ]
+    },
+    "permissions": [
+      { "id": "analytics.view", "label": "查看分析数据", "pluginId": "analytics-plugin" }
+    ]
+  }
+}
+```
+
+### 决策依据
+
+- 声明式与微内核理念一致：「描述与实现分离」，平台根据声明动态组装，而非插件运行时侵入
+- 无需启动插件即可读取 UI 贡献——前端可在登录页就渲染菜单
+- VS Code 的 `contributes` 模型已在业界充分验证，开发者认知成本低
+- 复用 `plugin.json` 避免额外文件管理成本
+
+------
+
+## 议题三：配置 Schema 增强与动态 UI 渲染
+
+### 背景与问题
+
+现有 `schema.yml` 支持基础类型（string/integer/boolean/enum），配置中心已有 `ConfigManager` + `ConfigFacade` 提供值的读写 API。但前端需要根据 Schema 动态渲染配置表单，当前 Schema 表达力不足：
+
+- 无法表达嵌套对象（如数据库连接参数组）
+- 无法表达数组/列表（如白名单列表）
+- 无法指导前端选择渲染控件（密码框 vs 文本框 vs 颜色选择器）
+- 无法表达条件显隐（如 SSL 开关控制证书配置的显示）
+- 无法对配置项分组展示
+
+### 可选方案对比
+
+| 维度 | B. 标准 JSON Schema（Draft 2020-12）⭐ 推荐 | A. 扩展现有 schema.yml | C. 自定义 DSL |
+|------|--------------------------------------------|------------------------|-------------|
+| 标准化程度 | ✅ W3C/ISO 标准，OpenAPI/Kong/APISIX 等均采用 | ⚠️ 自定义扩展缺乏生态 | ❌ 生态孤立 |
+| 前端生态 | ✅ 成熟表单渲染库（react-jsonschema-form、@rjsf/core、vue-json-schema-form） | ⚠️ 需自行实现渲染器 | ❌ 无生态 |
+| 表达力 | ✅ 通用极强，`$ref`/`oneOf`/`allOf` 支持复杂结构 | ✅ 足够覆盖配置管理场景 | ✅ 可定制 |
+| 学习成本 | ⚠️ JSON Schema 规范庞大，但可选用子集 | ✅ 极低（在已有字段上增加） | ⚠️ 需学习新 DSL |
+| 迁移成本 | ✅ 项目早期无历史包袱，可直接采用 | ✅ 完全兼容，增量扩展 | ❌ 需全量迁移 |
+| 未来演进 | ✅ 标准持续演进，社区驱动 | ⚠️ 将来可能需要迁移到标准 | ❌ 无人维护 |
+| 后端验证 | ✅ 成熟 Java 验证库（networknt/json-schema-validator 等） | ⚠️ 需自行实现验证器 | ⚠️ 需自行实现 |
+
+### 决策结论
+
+整体切换到**标准 JSON Schema（Draft 2020-12）**，替代现有 `schema.yml` 格式。
+
+**1. 插件配置 Schema 文件格式切换**
+
+从 `schema.yml` 改为 `schema.json`，使用标准 JSON Schema 格式：
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "host": {
+      "type": "string",
+      "title": "主机地址",
+      "default": "localhost",
+      "x-ui-group": "数据库配置"
+    },
+    "port": {
+      "type": "integer",
+      "title": "端口",
+      "default": 5432,
+      "minimum": 1,
+      "maximum": 65535,
+      "x-ui-group": "数据库配置"
+    },
+    "sslEnabled": {
+      "type": "boolean",
+      "title": "启用SSL",
+      "default": false,
+      "x-ui-group": "安全策略"
+    },
+    "sslCertPath": {
+      "type": "string",
+      "title": "SSL证书路径",
+      "x-ui-group": "安全策略"
+    },
+    "sslCertPassword": {
+      "type": "string",
+      "title": "SSL证书密码",
+      "x-ui-options": { "widget": "password", "sensitive": true },
+      "x-ui-group": "安全策略"
+    },
+    "allowedOrigins": {
+      "type": "array",
+      "title": "允许的来源域名",
+      "items": { "type": "string" },
+      "default": [],
+      "x-ui-group": "安全策略"
+    }
+  },
+  "if": {
+    "properties": { "sslEnabled": { "const": true } },
+    "required": ["sslEnabled"]
+  },
+  "then": {
+    "required": ["sslCertPath"]
+  },
+  "required": ["host", "port"]
+}
+```
+
+**2. 后端 JSON Schema 解析与验证**
+
+平台集成 JSON Schema 验证库（推荐 [networknt/json-schema-validator](https://github.com/networknt/json-schema-validator)，支持 Draft 2020-12），提供配置值的结构验证能力：
+
+```text
+插件加载 → 读取 schema.json → 注册到 ConfigManager
+配置写入 → JSON Schema 验证 → 合法则持久化，非法则返回验证错误详情
+```
+
+**3. 前端配置表单渲染**
+
+前端基于 JSON Schema 标准渲染配置表单，可直接使用社区成熟组件：
+
+- React 生态：`@rjsf/core`（react-jsonschema-form）
+- Vue 生态：`vue-json-schema-form`
+
+渲染器读取标准 JSON Schema 字段自动生成表单控件（string → 文本框，integer → 数字输入，boolean → 开关，array → 列表编辑器等）。
+
+**4. 前端渲染扩展：`x-ui-options` 自定义关键字**
+
+对于前端渲染的额外提示（如 password、color、textarea 等），使用 JSON Schema 标准的扩展方式——在 schema 中添加 `x-` 前缀的自定义关键字。这是 JSON Schema 规范明确允许的扩展方式，不会与标准关键字冲突：
+
+```json
+{
+  "sslCertPassword": {
+    "type": "string",
+    "title": "SSL证书密码",
+    "x-ui-options": {
+      "widget": "password",
+      "sensitive": true
+    }
+  },
+  "themeColor": {
+    "type": "string",
+    "title": "主题色",
+    "x-ui-options": {
+      "widget": "color"
+    }
+  },
+  "platformDescription": {
+    "type": "string",
+    "title": "平台描述",
+    "x-ui-options": {
+      "widget": "textarea"
+    }
+  }
+}
+```
+
+支持的 `x-ui-options.widget` 值：
+
+| widget 值 | 渲染控件 | 适用类型 |
+|-----------|---------|---------|
+| `password` | 密码输入框 | string |
+| `textarea` | 多行文本框 | string |
+| `color` | 颜色选择器 | string |
+| `select` | 下拉选择 | string（配合 enum） |
+| `slider` | 滑块 | integer/number |
+| `radio` | 单选按钮组 | string（配合 enum） |
+
+**5. 条件显隐：标准 `if/then/else` 关键字**
+
+使用 JSON Schema 标准的 `if/then/else` 关键字表达条件显隐和条件必填：
+
+```json
+{
+  "if": {
+    "properties": { "sslEnabled": { "const": true } },
+    "required": ["sslEnabled"]
+  },
+  "then": {
+    "required": ["sslCertPath"]
+  }
+}
+```
+
+前端渲染器据此实现：当 `sslEnabled` 为 `true` 时，显示 `sslCertPath` 字段并标记为必填。
+
+**6. 分组展示：`x-ui-group` 自定义关键字**
+
+使用 `x-ui-group` 自定义关键字对配置项分组展示：
+
+```json
+{
+  "host": {
+    "type": "string",
+    "title": "主机地址",
+    "default": "localhost",
+    "x-ui-group": "数据库配置"
+  },
+  "port": {
+    "type": "integer",
+    "title": "端口",
+    "default": 5432,
+    "x-ui-group": "数据库配置"
+  }
+}
+```
+
+**7. 后端 API 设计**
+
+```text
+GET  /admin/v1/config/{scope}/schema    → 返回 JSON Schema 定义（含 x-ui-options、x-ui-group）
+GET  /admin/v1/config/{scope}           → 返回当前配置值
+PUT  /admin/v1/config/{scope}           → 更新配置值（JSON Schema 验证 + 触发 ConfigChangeEvent）
+```
+
+### JSON Schema 自定义扩展关键字汇总
+
+| 关键字 | 作用 | 示例 |
+|--------|------|------|
+| `x-ui-options` | 前端渲染控件提示 | `{ "widget": "password", "sensitive": true }` |
+| `x-ui-group` | 配置项分组展示 | `"数据库配置"` |
+
+### 决策依据
+
+- 项目处于早期阶段，无历史包袱，可直接采用标准方案，避免将来迁移成本
+- JSON Schema 是被广泛使用的公认标准（W3C、OpenAPI、Kong/APISIX 等均采用），减少开发者认知成本
+- 前端有成熟的 JSON Schema 表单渲染生态（react-jsonschema-form、vue-json-schema-form），无需自行实现渲染器
+- JSON Schema 的 `if/then/else`、`$ref`、`oneOf`、`allOf` 等关键字可表达复杂配置结构，远超自定义扩展的表达力
+- 采用标准减少将来该功能过时、需大幅调整的可能性
+- `x-` 前缀自定义关键字是 JSON Schema 规范明确允许的扩展方式，不会与标准关键字冲突
+
+------
+
+## 议题四：认证 Token 管理与权限可拓展模型
+
+### 背景与问题
+
+现有认证体系（ADR-001 单账号机制、ADR-003 AuthProvider 拓展点改造）已建立：
+- `AuthProvider` 拓展点 + `CompositeAuthProvider` 责任链
+- `AuthChallengeHandler` 拓展点（引导登录页 vs 401 JSON）
+- `AuthFilter` 拦截 `/admin/**` 请求
+
+但缺少：
+- 标准 Token 端点（前端需要明确的登录/登出/刷新接口）
+- 权限检查契约（API 端点如何声明所需权限、如何校验）
+- 核心业务对象 API（用户、角色 CRUD）的权限驱动方式
+
+### 可选方案对比
+
+| 维度 | A. 拓展点驱动 + 平台契约 ⭐ 推荐 | B. 平台内建完整 RBAC | C. 纯 OAuth2/OIDC |
+|------|--------------------------------|--------------------|--------------------|
+| 微内核一致性 | ✅ 平台仅定义契约，实现可替换 | ❌ 内建实现不可替换 | ⚠️ 标准化但绑定 OAuth2 |
+| 初始可用性 | ✅ BootstrapAuthProvider 作为兜底 | ✅ 内建完整功能 | ❌ 需搭建授权服务器 |
+| 灵活性 | ✅ 插件可实现任意权限模型 | ❌ 仅支持 RBAC | ⚠️ 仅支持 OAuth2 流程 |
+| 实现成本 | 低（契约先行，实现渐进） | 中（需完整 RBAC 实现） | 高（需授权服务器） |
+| 嵌入式场景 | ✅ 单JAR部署即可使用 | ✅ 内建无外部依赖 | ❌ 依赖授权服务器 |
+| 替换能力 | ✅ 插件可完全替换认证/权限实现 | ❌ 绑定平台实现 | ⚠️ 可替换但复杂 |
+
+### 决策结论
+
+**1. 标准 Token 端点**
+
+```text
+POST /admin/v1/auth/login     → 登录，返回 Access Token + Refresh Token
+POST /admin/v1/auth/logout    → 登出，失效当前 Token
+POST /admin/v1/auth/refresh   → 刷新 Access Token
+```
+
+**2. Token 策略**
+
+- 采用短期 Access Token + 长期 Refresh Token 双令牌模式
+- 具体 Token 生成/验证逻辑由 `AuthProvider` 拓展点的实现者决定
+- 平台仅定义端点契约和响应格式，不绑定 JWT/Session 等特定实现
+
+```text
+┌──────────────────────────────────────────────────────┐
+│                  Token 端点契约                        │
+│                                                      │
+│  POST /admin/v1/auth/login                           │
+│  Request:  { "username": "...", "password": "..." }  │
+│  Response: { "accessToken": "...", "refreshToken":   │
+│              "...", "expiresIn": 3600, "tokenType":   │
+│              "Bearer" }                               │
+│                                                      │
+│  实现逻辑：委托给 AuthProvider.authenticate()         │
+│  Token生成：由 AuthProvider 实现者决定                 │
+│  ────────────────────────────────────────             │
+│  BootstrapAuthProvider → 简单随机Token + 内存存储     │
+│  LDAP 插件           → JWT Token                     │
+│  OAuth2 插件         → 委托授权服务器                  │
+└──────────────────────────────────────────────────────┘
+```
+
+**3. 权限模型**
+
+通过 `PermissionResolver` 拓展点支持不同权限模型：
+
+```java
+// api 模块: com.nexusadmin.api.extension.permission.PermissionResolver
+public interface PermissionResolver extends ExtensionPoint {
+
+    /**
+     * 判断用户是否拥有指定权限。
+     *
+     * @param userId     用户标识
+     * @param permission 权限标识（格式：scope.action，如 "plugins.start"）
+     * @return 是否拥有权限
+     */
+    boolean hasPermission(String userId, String permission);
+
+    /**
+     * 获取用户的所有权限列表。
+     *
+     * @param userId 用户标识
+     * @return 权限标识列表
+     */
+    List<String> resolvePermissions(String userId);
+}
+```
+
+**4. API 端点权限声明**
+
+Controller 方法通过 `@RequirePermission` 注解声明所需权限：
+
+```java
+@Target({ElementType.METHOD, ElementType.TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface RequirePermission {
+    /**
+     * 所需权限标识，格式：scope.action
+     */
+    String value();
+}
+
+// 使用示例
+@RestController
+@RequestMapping("/admin/v1/plugins")
+public class PluginManageController {
+
+    @RequirePermission("plugins.view")
+    @GetMapping
+    public DataResult<List<PluginView>> listAll() { ... }
+
+    @RequirePermission("plugins.start")
+    @PostMapping("/{pluginId}/start")
+    public Result start(@PathVariable String pluginId) { ... }
+}
+```
+
+权限检查由 `AuthFilter` 在请求拦截阶段统一执行：
+
+```text
+请求进入 → AuthFilter 拦截
+  → 解析 Token 获取 userId
+  → 检查目标方法是否标注 @RequirePermission
+  → 委托 PermissionResolver.hasPermission(userId, permission)
+  → 通过则放行，拒绝则返回 403
+```
+
+**5. 核心业务对象 API**
+
+用户、角色、权限 CRUD API 通过 Service 层暴露，采用标准的 Spring Boot 三层架构（Controller → Service）：
+
+```text
+/admin/v1/users/**   → UserService（骨架占位，通过 @ConditionalOnMissingBean 供插件覆盖）
+/admin/v1/roles/**   → RoleService（骨架占位，通过 @ConditionalOnMissingBean 供插件覆盖）
+```
+
+### 决策依据
+
+- 拓展点驱动与微内核理念一致：平台仅定义契约，插件提供实现
+- BootstrapAuthProvider 作为初始兜底，系统零配置即可使用
+- `PermissionResolver` 拓展点允许插件实现 RBAC、ABAC 或任意权限模型
+- 核心业务对象 API 通过标准 Service 层暴露，保持可替换性
+- 不绑定 JWT/Session 等特定实现，保持技术中立
+
+------
+
+## 议题五：统一响应体系与查询规范
+
+### 背景与问题
+
+现有 `Result` / `DataResult` 体系满足基本需要，但存在以下不足：
+- 缺少分页响应支持（插件列表、日志列表等场景）
+- 查询参数无统一规范（分页、排序、过滤）
+- 错误码未按模块分段，难以定位问题归属
+- 错误响应无字段级校验详情
+- 错误响应缺乏标准化契约，自定义格式不利于第三方集成和工具生态对接
+
+### 可选方案对比
+
+| 维度 | B. 成功响应信封 + RFC 7807 Problem Details 错误响应 ⭐ 推荐 | A. 统一信封（成功/错误同结构） | C. 纯 RFC 7807（成功/错误统一） |
+|------|-----------------------------------------------------------|-------------------------------|-------------------------------|
+| 成功响应一致性 | ✅ 保持 Result/DataResult/PageResult 信封 | ✅ 统一信封 | ❌ RFC 7807 仅定义错误，不适用成功响应 |
+| 错误响应标准化 | ✅ RFC 7807 国际标准，工具生态完整 | ⚠️ 自定义格式 | ✅ 标准化 |
+| HTTP 语义正确性 | ✅ 错误使用 4xx/5xx 状态码 + Problem Details | ⚠️ 可能用 200 包裹错误 | ✅ 正确使用状态码 |
+| 前端处理 | ✅ 按 HTTP 状态码分发，成功走信封、错误走 Problem Details | ✅ 统一解析逻辑 | ⚠️ 成功响应无标准格式 |
+| 第三方集成 | ✅ 错误响应可被 API 网关、监控工具自动识别 | ❌ 自定义格式需适配 | ✅ 标准化可识别 |
+| 迁移成本 | ⚠️ 错误响应格式变更 | ✅ 最小变更 | ❌ 成功/错误均需调整 |
+
+### 决策结论
+
+采用**成功响应信封 + RFC 7807 Problem Details 错误响应**的双模式方案：
+
+- **成功响应**：保持现有 `Result` / `DataResult` / `PageResult` 信封，`Content-Type: application/json`
+- **错误响应**：采用 [RFC 7807 Problem Details](https://datatracker.ietf.org/doc/html/rfc7807) 标准，`Content-Type: application/problem+json`
+
+**1. 新增 PageResult 分页响应**
+
+```java
+// api 模块: com.nexusadmin.api.result.PageResult
+public class PageResult<T> extends Result {
+
+    private final long total;     // 总记录数
+    private final int page;       // 当前页码（从1开始）
+    private final int size;       // 每页数量
+    private final List<T> items;  // 当前页数据
+
+    // 静态工厂方法
+    public static <T> PageResult<T> of(long total, int page, int size, List<T> items) {
+        return new PageResult<>(200, "操作成功", total, page, size, items);
+    }
+}
+```
+
+**2. 统一查询参数规范**
+
+| 参数 | 类型 | 默认值 | 说明 | 示例 |
+|------|------|--------|------|------|
+| `page` | int | 1 | 页码（从1开始） | `page=2` |
+| `size` | int | 20 | 每页数量（最大100） | `size=50` |
+| `sort` | string | 无 | 排序字段:方向 | `sort=name:asc,createdAt:desc` |
+| `filter` | string | 无 | 过滤条件（键值对） | `filter=state:ACTIVE,version:1.0` |
+
+**3. 错误响应采用 RFC 7807 Problem Details**
+
+错误响应使用 `Content-Type: application/problem+json`，遵循 RFC 7807 标准：
+
+```json
+{
+  "type": "https://nexusadmin.io/probs/config/value-type-mismatch",
+  "title": "配置值类型不匹配",
+  "status": 400,
+  "detail": "请求中的配置值不符合 Schema 定义的类型约束",
+  "instance": "/admin/v1/config/demo-plugin",
+  "errorCode": 3002,
+  "fieldErrors": [
+    { "field": "maxConcurrentPlugins", "value": "abc", "message": "期望 integer 类型" },
+    { "field": "logLevel", "value": "VERBOSE", "message": "不在允许值范围内 [DEBUG, INFO, WARN, ERROR]" }
+  ]
+}
+```
+
+RFC 7807 标准字段：
+
+| 字段 | 类型 | 必选 | 说明 |
+|------|------|------|------|
+| `type` | URI | 是 | 问题类型标识符，指向问题说明文档（可人类可读的 URI） |
+| `title` | string | 是 | 问题类型的简短人类可读摘要（同一 type 值的 title 应相同） |
+| `status` | int | 是 | HTTP 状态码（由服务端生成，避免客户端自行推断） |
+| `detail` | string | 否 | 本次问题发生的具体解释 |
+| `instance` | URI | 否 | 问题具体出现的资源标识 |
+
+项目扩展字段（`x-` 前缀非必需，RFC 7807 允许添加扩展成员）：
+
+| 扩展字段 | 类型 | 说明 |
+|---------|------|------|
+| `errorCode` | int | 业务错误码（按模块分段），用于前端 i18n 和精确错误处理 |
+| `fieldErrors` | array | 字段级校验错误列表（含 `field`、`value`、`message`） |
+
+**4. 业务错误码体系分段**
+
+错误码按模块分段编号，嵌入 Problem Details 的 `errorCode` 扩展字段：
+
+```text
+1xxx → 认证相关
+  1001  认证失败（用户名或密码错误）
+  1002  Token 已过期
+  1003  Token 无效
+  1004  权限不足
+  1005  账号已锁定
+
+2xxx → 插件相关
+  2001  插件不存在
+  2002  插件状态不合法（如在 STOPPED 状态下执行 start）
+  2003  插件依赖未满足
+  2004  插件加载失败
+  2005  插件描述文件无效
+
+3xxx → 配置相关
+  3001  配置项不存在
+  3002  配置值类型不匹配
+  3003  配置值超出范围
+  3004  配置 Schema 不存在
+
+4xxx → 系统相关
+  4001  平台维护中
+  4002  并发限制超限
+
+5xxx → 业务相关
+  5001  用户已存在
+  5002  角色不存在
+  5003  业务操作冲突
+```
+
+**5. `type` URI 与 errorCode 映射约定**
+
+`type` URI 遵循统一模式 `https://nexusadmin.io/probs/{category}/{error-name}`，与 errorCode 形成一一对应：
+
+```text
+errorCode 1001 → type: https://nexusadmin.io/probs/auth/authentication-failed
+errorCode 1002 → type: https://nexusadmin.io/probs/auth/token-expired
+errorCode 2001 → type: https://nexusadmin.io/probs/plugin/not-found
+errorCode 3002 → type: https://nexusadmin.io/probs/config/value-type-mismatch
+```
+
+`type` URI 可解析为人类可读的问题说明文档，供前端开发者查阅。
+
+### 响应体体系
+
+```text
+成功响应（Content-Type: application/json）
+  Result (基类)
+    ├── code: int        状态码（200）
+    └── message: String  消息文本
+
+  DataResult<T> (带数据载荷)
+    └── data: T          业务数据
+
+  PageResult<T> (分页数据)
+    ├── total: long      总记录数
+    ├── page: int        当前页码
+    ├── size: int        每页数量
+    └── items: List<T>   当前页数据
+
+错误响应（Content-Type: application/problem+json）
+  RFC 7807 Problem Details
+    ├── type: URI          问题类型标识
+    ├── title: String      问题类型摘要
+    ├── status: int        HTTP 状态码
+    ├── detail: String     具体解释（可选）
+    ├── instance: URI      资源标识（可选）
+    ├── errorCode: int     业务错误码（扩展）
+    └── fieldErrors: List  字段级错误列表（扩展）
+         ├── field: String    字段名
+         ├── value: Object    实际值
+         └── message: String  错误描述
+```
+
+### 决策依据
+
+- RFC 7807 是 IETF 国际标准，被 Spring 6、API 网关、监控工具等广泛支持，错误响应标准化可自动融入工具生态
+- 成功响应与错误响应采用不同格式是 REST API 的常见最佳实践——成功响应用信封保持一致性，错误响应用 Problem Details 保证标准化
+- `type` URI 提供机器可读的错误类型标识，比纯数字码更具表达力和可发现性
+- `errorCode` 扩展字段保留了数字错误码的便利性（前端 i18n、精确错误处理），同时不破坏 RFC 7807 标准兼容性
+- 项目早期无历史包袱，可直接采用标准方案，避免将来从自定义错误格式迁移到 Problem Details 的成本
+
+------
+
+## 议题六：插件前端资源接入方案
+
+### 背景与问题
+
+插件需要提供自定义前端页面（如数据分析仪表盘、用户管理界面），需决定前端资源的打包、分发和加载方式。
+
+核心矛盾：
+- **隔离性**：插件前端代码不应污染主框架的全局样式和 JS 上下文
+- **集成度**：插件页面需要与主框架交互（获取Token、跳转路由、发送通知）
+- **技术栈无关**：插件开发者可选用任意前端框架（React、Vue、Svelte 或纯 HTML）
+
+### 可选方案对比
+
+| 维度 | A. 静态资源托管 + iframe 沙箱 ⭐ 推荐（第一阶段） | B. Module Federation | C. Web Components | D. 服务端模板渲染 |
+|------|--------------------------------------------------|---------------------|-------------------|-----------------|
+| 隔离性 | ✅ iframe 天然隔离（样式、JS、DOM） | ❌ 共享全局作用域 | ⚠️ Shadow DOM 部分隔离 | ✅ 服务端渲染无隔离需求 |
+| 技术栈无关 | ✅ iframe 内可使用任意技术栈 | ❌ 仅限 Webpack 生态 | ✅ 标准 Web API | ⚠️ 依赖模板引擎 |
+| 集成度 | ⚠️ 需 postMessage 通信 | ✅ 共享模块、状态 | ⚠️ 需自定义事件 | ⚠️ 交互体验差 |
+| 实现复杂度 | 低 | 高（需统一 Webpack 配置） | 中 | 低 |
+| 插件开发门槛 | 低（普通前端项目即可） | 高（需配置 MF） | 中 | 低 |
+| 生态成熟度 | ✅ iframe 成熟稳定 | ⚠️ Webpack 5 特性，仍在演进 | ⚠️ 标准化中，生态不够 | ✅ 传统方案 |
+
+### 决策结论
+
+采用「静态资源托管 + iframe 沙箱」的渐进式方案。
+
+**第一阶段：静态资源托管 + iframe 沙箱**
+
+```text
+┌──────────────────────────────────────────────────────────┐
+│                     主框架 (Host)                          │
+│                                                          │
+│  ┌─────────────────────────────────────────────────┐     │
+│  │  侧边栏菜单                                      │     │
+│  │  ├── 仪表盘                                      │     │
+│  │  ├── 插件管理                                     │     │
+│  │  └── 数据分析 ← 插件贡献的菜单项                   │     │
+│  └─────────────────────────────────────────────────┘     │
+│                                                          │
+│  ┌─────────────────────────────────────────────────┐     │
+│  │  主内容区                                        │     │
+│  │  ┌───────────────────────────────────────────┐  │     │
+│  │  │  <iframe                                   │  │     │
+│  │  │    src="/plugins/analytics/assets/          │  │     │
+│  │  │         analytics/pages/Dashboard.html"     │  │     │
+│  │  │  />                                        │  │     │
+│  │  │                                           │  │     │
+│  │  │  ← JS Bridge SDK (postMessage)            │  │     │
+│  │  │     - nexus.getToken()                    │  │     │
+│  │  │     - nexus.navigateTo('/admin/plugins')  │  │     │
+│  │  │     - nexus.notify('操作成功', 'success')   │  │     │
+│  │  └───────────────────────────────────────────┘  │     │
+│  └─────────────────────────────────────────────────┘     │
+└──────────────────────────────────────────────────────────┘
+```
+
+**1. 静态资源托管**
+
+插件前端资源（HTML/JS/CSS）打包在插件 JAR 中或放置在插件数据目录，平台通过统一端点提供静态资源托管：
+
+```text
+/plugins/{pluginId}/assets/**    → 插件前端静态资源
+```
+
+示例：
+```text
+/plugins/analytics/assets/analytics/pages/Dashboard.html
+/plugins/analytics/assets/analytics/components/SummaryWidget.html
+/plugins/analytics/assets/analytics/static/bundle.js
+/plugins/analytics/assets/analytics/static/styles.css
+```
+
+**2. JS Bridge SDK**
+
+平台提供轻量级 JS Bridge SDK，iframe 内页面通过 `postMessage` 与主框架通信：
+
+```javascript
+// 插件前端页面中使用
+const nexus = window.NexusBridge;
+
+// 获取当前用户 Token
+const token = await nexus.getToken();
+
+// 跳转到主框架路由
+nexus.navigateTo('/admin/plugins');
+
+// 发送通知
+nexus.notify('操作成功', 'success');
+
+// 获取平台信息
+const info = await nexus.getPlatformInfo();
+
+// 订阅平台事件
+nexus.on('plugin:stopped', (event) => {
+  console.log('插件已停止:', event.pluginId);
+});
+```
+
+**3. contributes 中的 component 路径映射**
+
+`plugin.json` 中 `routes[].component` 和 `mountPoints[].component` 的值与静态资源路径对应：
+
+```text
+component: "analytics/pages/Dashboard"
+  → /plugins/{pluginId}/assets/analytics/pages/Dashboard.html
+```
+
+**第二阶段（远期）：Module Federation**
+
+在 iframe 方案稳定运行后，可引入 Module Federation 实现更紧密的集成：
+- 共享依赖（React/Vue 运行时）
+- 主框架与插件页面共享状态
+- 无 iframe 边框，更原生的 UI 体验
+
+此阶段不纳入当前实施范围，但设计上预留演进空间——`contributes` 声明与加载机制解耦，更换加载方式不影响声明格式。
+
+### 决策依据
+
+- iframe 沙箱方案实现简单、隔离性好、技术栈无关，满足当前阶段需求
+- JS Bridge 通过 `postMessage` 通信是成熟的跨 iframe 通信方案
+- 静态资源托管端点 `/plugins/{pluginId}/assets/**` 与现有 `/api/{pluginId}/**` 命名风格一致
+- Module Federation 作为远期目标，当前架构不阻塞未来演进
+
+------
+
+## 议题七：API 发现与元数据服务
+
+### 背景与问题
+
+前端和第三方集成需要了解：
+- 平台提供了哪些 API 端点
+- 哪些插件已注册了哪些能力（菜单、路由、权限等）
+- 当前运行模式、版本号等平台基本信息
+- API 的参数、响应格式等详细文档
+
+当前系统缺乏统一的发现机制和文档服务。
+
+### 可选方案对比
+
+| 维度 | B. OpenAPI 3.0 自动文档（纳入当前实施）⭐ 推荐 | A. 自定义端点发现 | C. GraphQL Introspection |
+|------|--------------------------------------------|-------------------|--------------------------|
+| 标准化程度 | ✅ OpenAPI 是 REST API 事实标准（Linux 基金会项目） | ⚠️ 自定义格式 | ✅ GraphQL 标准内建 |
+| 工具生态 | ✅ Knife4j、代码生成、API 测试、网关集成 | ❌ 无生态 | ⚠️ 仅限 GraphQL 生态 |
+| 实现成本 | 低（Knife4j 基于 SpringDoc 自动扫描 Spring MVC 注解） | 低 | 高（架构变更） |
+| 文档能力 | ✅ 自动生成交互式文档（Knife4j 增强 UI） | ⚠️ 仅端点列表，无文档 | ✅ Schema 内省 |
+| 动态 API 支持 | ✅ Knife4j（基于 SpringDoc）编程式 API 可注册插件动态端点 | ✅ 可自定义 | ✅ 运行时内省 |
+| 架构适配 | ✅ 原生适配 REST + Spring MVC | ✅ 适配当前架构 | ❌ 需迁移到 GraphQL |
+| 持续维护 | ✅ 注解驱动，代码变更即文档同步（Knife4j 完全兼容 SpringDoc 注解） | ⚠️ 需手动同步 | ✅ Schema 自动同步 |
+
+### 决策结论
+
+将 OpenAPI 3.0 自动文档生成纳入当前实施范围，同时保留独立的平台信息和 UI 元数据端点。
+
+**1. 集成 Knife4j 4.x（基于 SpringDoc）**
+
+选择 Knife4j 4.x 的理由：
+
+- **底层基于 SpringDoc**：完全保留 OpenAPI 3.0 标准能力和 SpringDoc 的自动扫描机制
+- **增强 UI 更匹配管理面板定位**：相比原生 Swagger UI，Knife4j 的界面设计更现代化，交互体验更适合管理后台场景
+- **支持离线文档导出**：原生支持 Markdown、Word 等格式导出，便于团队协作和外部交付
+- **中文界面开箱即用**：默认提供中文界面，无需额外配置，降低国内团队使用门槛
+
+添加 `knife4j-openapi3-jakarta-spring-boot-starter` 依赖，提供标准 OpenAPI 3.0 文档：
+
+```text
+依赖：knife4j-openapi3-jakarta-spring-boot-starter
+自动扫描：所有 @RestController 注解的端点
+文档格式：OpenAPI 3.0
+代码注解方式：不变，继续使用 @Operation、@Tag 等 OpenAPI 标准注解
+动态注册机制：不变，继续使用 OpenApiCustomizer 扩展 OpenAPI 定义
+```
+
+**2. 管理面板 API 自动文档**
+
+管理面板 API 通过 Spring MVC 注解（`@RestController`、`@RequestMapping`、`@Operation` 等）自动生成 OpenAPI 文档：
+
+```java
+@RestController
+@RequestMapping("/admin/v1/plugins")
+@Tag(name = "插件管理", description = "插件生命周期管理接口")
+public class PluginManageController {
+
+    @Operation(summary = "获取插件列表", description = "返回所有已注册插件的状态信息")
+    @ApiResponse(responseCode = "200", description = "成功返回插件列表")
+    @GetMapping
+    public DataResult<List<PluginView>> listAll() { ... }
+}
+```
+
+**3. 插件动态 API 文档注册**
+
+插件 API 在注册时同步注册 OpenAPI paths，通过 OpenApiCustomizer 扩展 OpenAPI 定义（机制不变，Knife4j 底层基于 SpringDoc，完全兼容）：
+
+```java
+// 插件 API 注册时同步注册 OpenAPI 文档
+@Component
+public class PluginOpenApiCustomizer implements OpenApiCustomizer {
+
+    private final PluginWebRegistry registry;
+
+    @Override
+    public void customise(OpenAPI openApi) {
+        // 遍历已注册的插件端点，添加到 OpenAPI paths
+        for (PluginEndpoint endpoint : registry.getEndpoints()) {
+            PathItem pathItem = new PathItem()
+                .get(new Operation()
+                    .summary(endpoint.getDescription())
+                    .addTagsItem(endpoint.getPluginId()));
+            openApi.path(endpoint.getPath(), pathItem);
+        }
+    }
+}
+```
+
+**4. 访问端点**
+
+```text
+GET /doc.html                    → Knife4j 增强 UI（交互式 API 文档）
+GET /admin/v1/openapi.json       → OpenAPI 3.0 JSON 格式
+GET /admin/v1/openapi.yaml       → OpenAPI 3.0 YAML 格式
+```
+
+> 注：Knife4j 的默认入口路径为 `/doc.html`，与原生 Swagger UI 的 `/swagger-ui.html` 不同。
+
+**5. 保留独立元数据端点**
+
+以下端点有独立价值，OpenAPI 不能替代：
+
+```text
+GET /admin/v1/system/info        → 平台运行信息（版本、模式、插件统计等）
+GET /admin/v1/ui/manifest        → UI 贡献声明聚合（菜单、路由、权限等）
+```
+
+- `/admin/v1/system/info` 提供平台运行时状态，超出 API 文档的范畴
+- `/admin/v1/ui/manifest` 聚合插件 UI 贡献声明，是前端动态渲染的直接数据源，非 API 文档的职责
+
+**6. `/admin/v1/system/endpoints` 简化**
+
+原计划的自定义端点发现端点 `/admin/v1/system/endpoints` 可简化为 OpenAPI 的轻量替代视图，用于不需要完整 OpenAPI 规范的场景：
+
+```text
+GET /admin/v1/system/endpoints   → 端点摘要列表（从 OpenAPI 规范中提取简化信息）
+```
+
+此端点为可选实现，优先级低于 OpenAPI 文档。若 OpenAPI 已满足需求，可暂不实现。
+
+### 元数据端点职责划分
+
+```text
+/doc.html                   → 交互式 API 文档（Knife4j 增强 UI）
+/admin/v1/openapi.json      → 完整 API 规范（OpenAPI 3.0，含参数、响应、示例）
+/admin/v1/openapi.yaml      → 同上，YAML 格式
+/admin/v1/system/info       → 平台运行时状态（版本、模式、启动时间、插件统计）
+/admin/v1/ui/manifest       → UI 贡献声明聚合（前端动态渲染的直接数据源）
+/admin/v1/system/endpoints  → 端点摘要列表（可选，OpenAPI 的轻量替代视图）
+```
+
+### 决策依据
+
+- Knife4j 4.x 底层基于 SpringDoc（OpenAPI 3.0），集成成本低，仅需添加依赖和少量配置，即可自动生成 API 文档
+- OpenAPI 规范提供标准化的 API 描述，可自动生成交互式文档（Knife4j 增强 UI），减少手动维护文档的成本
+- 插件动态注册的 API 通过 OpenApiCustomizer 机制同步纳入文档（Knife4j 完全兼容 SpringDoc 的编程式 API），确保文档与实际运行时 API 一致
+- OpenAPI 规范可被 API 网关、代码生成器、测试工具等自动消费，一次投入持续受益
+- 项目早期引入标准文档工具，培养文档与代码同步的开发习惯，避免 API 文档与实现脱节
+- `/admin/v1/system/info` 和 `/admin/v1/ui/manifest` 有独立于 API 文档的价值，予以保留
+
+------
+
+## 总结
+
+### 核心决策一览表
+
+| 议题 | 决策结论 | 关键依据 |
+|------|---------|---------|
+| 议题一：API分区与版本化 | `/admin/v1/**` 路径版本化，按职责分区；插件 API 保持 `/api/{pluginId}/**` | 业界主流，调试友好，演进预留 |
+| 议题二：UI贡献声明 | `plugin.json` 扩展 `contributes` 字段，声明式配置 | 微内核理念一致，无需启动插件，VS Code 验证 |
+| 议题三：配置Schema增强 | 整体切换到标准 JSON Schema（Draft 2020-12），`x-ui-options`/`x-ui-group` 扩展 | 无历史包袱直接采用标准，前端生态成熟，表达力强 |
+| 议题四：认证与权限 | Token 端点 + PermissionResolver 拓展点 + @RequirePermission 注解 | 拓展点驱动，平台仅契约，Bootstrap 兜底 |
+| 议题五：响应体系 | 成功响应信封 + RFC 7807 Problem Details 错误响应，新增 PageResult，错误码分段 | 错误响应标准化，RFC 7807 工具生态完整，`type` URI 机器可读 |
+| 议题六：前端资源接入 | 静态资源托管 `/plugins/{pluginId}/assets/**` + iframe 沙箱 + JS Bridge | 隔离性好、技术栈无关、实现简单 |
+| 议题七：API发现与文档 | 集成 Knife4j 4.x（基于 SpringDoc）自动文档，保留 system/info 和 ui/manifest | 标准化、工具生态完整、一次投入持续受益 |
+
+### 与现有架构的关系
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                        ADR-005 决策体系                          │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  延续微内核理念                                            │  │
+│  │  • PermissionResolver 拓展点 → 权限模型可替换              │  │
+│  │  • contributes 声明式 → UI 能力可替换                      │  │
+│  │  • Token 生成由 AuthProvider 实现 → 认证方式可替换          │  │
+│  │  • 业务对象 API 由插件提供实现 → 用户系统可替换             │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  延续拓展点驱动                                            │  │
+│  │  • ADR-003 AuthProvider/AuthChallengeHandler 拓展点改造     │  │
+│  │  • ADR-003 ExtensionConsumer 缓存机制                      │  │
+│  │  • 新增 PermissionResolver 拓展点                           │  │
+│  │  • 复用 WebEndpointExtension 机制管理插件 API               │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  延续模块单向依赖                                          │  │
+│  │  • 新增类型在 api 模块（PageResult、@RequirePermission）    │  │
+│  │  • core 模块不感知 HTTP/API 层概念                          │  │
+│  │  • PermissionResolver 在 api 模块定义（依赖 ExtensionPoint） │  │
+│  │  • 依赖方向不变：core ← api ← app                          │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  采用行业标准                                              │  │
+│  │  • JSON Schema（Draft 2020-12）→ 配置 Schema 标准化        │  │
+│  │  • RFC 7807 Problem Details → 错误响应标准化               │  │
+│  │  • OpenAPI 3.0 → API 文档标准化                           │  │
+│  │  • 标准采纳减少未来迁移成本，融入工具生态                    │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 影响范围评估
+
+| 模块 | 影响说明 | 风险等级 |
+|------|---------|---------|
+| nexus-admin-core | `plugin.json` 解析器需扩展 supports `contributes` 字段；配置 Schema 加载器从 `schema.yml` 切换到 `schema.json`（JSON Schema 格式） | 中 |
+| nexus-admin-api | Controller 路径从 `/admin/` 改为 `/admin/v1/`；新增 PageResult、PermissionResolver、@RequirePermission、UI Manifest API、Config Schema API、Auth Token 端点；错误响应采用 RFC 7807 Problem Details 格式；集成 Knife4j 4.x 自动文档 | 高 |
+| nexus-admin-app | `AuthFilter` URL Pattern 更新；新增静态资源托管端点 `/plugins/{pluginId}/assets/**`；JS Bridge SDK；Knife4j 依赖与配置；全局异常处理切换到 RFC 7807 Problem Details | 中 |
+| plugins | `plugin.json` 增加 `contributes` 字段（可选，向后兼容）；配置 Schema 文件从 `schema.yml` 改为 `schema.json`（格式迁移）；前端资源按约定目录放置 | 低 |
+
+### 风险与缓解措施
+
+| 风险 | 影响 | 可能性 | 缓解措施 |
+|------|------|--------|---------|
+| API 路径版本化导致前端存量调用断裂 | 高 | 中 | 提供路径别名：`/admin/plugins/**` → `/admin/v1/plugins/**`，过渡期双路径兼容 |
+| contributes 声明与实际前端资源不匹配 | 中 | 中 | 插件启动时校验 component 路径对应的资源是否存在，不匹配则跳过该 UI 贡献并记录警告日志 |
+| iframe 沙箱与主框架通信延迟 | 低 | 高 | JS Bridge 使用 Promise 封装 postMessage，异步通信可接受；高频场景可用 SharedArrayBuffer 优化 |
+| JSON Schema 规范复杂度导致前端渲染器性能问题 | 中 | 低 | 选用子集（禁止 `$dynamicRef` 等高级特性），限制 Schema 嵌套深度（如最大 5 层）；前端渲染器按需加载 |
+| RFC 7807 错误响应与现有 Result 体系并存增加前端处理复杂度 | 中 | 中 | 前端按 HTTP 状态码分发：2xx 走 Result/DataResult/PageResult 解析，4xx/5xx 走 Problem Details 解析；封装统一的 HTTP 客户端拦截器屏蔽差异 |
+| PermissionResolver 拓展点未注册时权限检查行为 | 高 | 中 | 未注册 PermissionResolver 时默认策略：管理员拥有全部权限，普通用户拒绝——与当前 Bootstrap 单账号行为一致 |
+| Knife4j 与插件动态端点的同步时序 | 中 | 中 | 插件注册/卸载 API 时触发 OpenAPI 规范刷新；Knife4j UI 刷新即可获取最新文档 |
+| schema.yml → schema.json 迁移导致存量插件 Schema 加载失败 | 低 | 低 | 项目早期仅 demo-plugin 使用 schema.yml，迁移成本极低；过渡期可支持两种格式自动检测 |

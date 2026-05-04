@@ -1,7 +1,7 @@
 package com.nexusadmin.plugin.system.user.controller;
 
 import com.nexusadmin.api.domain.identity.User;
-import com.nexusadmin.api.result.DataResult;
+import com.nexusadmin.api.domain.result.DataResult;
 import com.nexusadmin.plugin.system.user.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

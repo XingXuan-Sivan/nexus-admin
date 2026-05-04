@@ -1,30 +1,25 @@
 package com.nexusadmin.core;
 
-import com.nexusadmin.core.config.ConfigManager;
 import com.nexusadmin.core.context.PlatformAccess;
 import com.nexusadmin.core.context.PlatformServices;
 import com.nexusadmin.core.context.PluginContext;
 import com.nexusadmin.core.context.PluginInfo;
 import com.nexusadmin.core.context.PluginRuntime;
 import com.nexusadmin.core.context.PluginWorkspace;
-import com.nexusadmin.core.event.EventBus;
 import com.nexusadmin.core.exception.PluginLoadException;
-import com.nexusadmin.core.extension.ExtensionRegistry;
-import com.nexusadmin.core.plugin.RuntimeMode;
-import com.nexusadmin.core.plugin.discovery.PluginDiscoverer;
+import com.nexusadmin.core.facade.ConfigFacade;
+import com.nexusadmin.core.facade.EventBusFacade;
+import com.nexusadmin.core.facade.ExtensionFacade;
+import com.nexusadmin.core.facade.PluginFacade;
 import com.nexusadmin.core.plugin.event.PluginStateChangedEvent;
 import com.nexusadmin.core.plugin.event.PluginProcessEvent;
 import com.nexusadmin.core.plugin.event.PluginFailureEvent;
-import com.nexusadmin.core.plugin.loader.PluginLoader;
 import com.nexusadmin.core.plugin.loader.PluginMetadata;
 import com.nexusadmin.core.plugin.loader.PluginWrapper;
-import com.nexusadmin.core.plugin.PluginRegistry;
-import com.nexusadmin.core.plugin.resolve.PluginResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -39,18 +34,11 @@ public abstract class AbstractPluginManager implements PluginManager {
 
     private static final Logger log = LoggerFactory.getLogger(AbstractPluginManager.class);
 
-    protected final PluginRegistry pluginRegistry;
-    protected final ExtensionRegistry extensionRegistry;
-    protected final EventBus eventBus;
-    protected final RuntimeMode runtimeMode;
-    protected final Path pluginsDataRoot;
-
-    protected PluginDiscoverer pluginDiscoverer;
-    protected PluginResolver pluginResolver;
-    protected PluginLoader pluginLoader;
-
-    // ===== 配置中心相关 =====
-    protected ConfigManager configManager;
+    protected final CoreConfig coreConfig;
+    protected final PluginFacade pluginFacade;
+    protected final ExtensionFacade extensionFacade;
+    protected final ConfigFacade configFacade;
+    protected final EventBusFacade eventBusFacade;
 
     // ===== 平台服务注册中心 =====
     protected final PlatformServices platformServices = new PlatformServices();
@@ -67,56 +55,25 @@ public abstract class AbstractPluginManager implements PluginManager {
 
     /**
      * 构造抽象插件管理器。
-     * <p>子类通过实现工厂方法提供 Discoverer、Resolver 和 Loader。</p>
+     * <p>通过 Facade 聚合访问底层组件，避免直接依赖具体实现。</p>
      *
-     * @param pluginRegistry    插件注册中心
-     * @param extensionRegistry 扩展注册中心
-     * @param eventBus          事件总线
-     * @param runtimeMode       运行模式
-     * @param pluginsDataRoot   插件数据根目录
+     * @param coreConfig       核心运行时配置
+     * @param pluginFacade     插件组件门面
+     * @param extensionFacade  扩展注册中心门面
+     * @param configFacade     配置管理门面
+     * @param eventBusFacade   事件总线门面
      */
-    protected AbstractPluginManager(PluginRegistry pluginRegistry,
-                                    ExtensionRegistry extensionRegistry,
-                                    EventBus eventBus,
-                                    RuntimeMode runtimeMode,
-                                    Path pluginsDataRoot) {
-        this.pluginRegistry = Objects.requireNonNull(pluginRegistry, "插件注册中心不能为空");
-        this.extensionRegistry = Objects.requireNonNull(extensionRegistry, "扩展注册中心不能为空");
-        this.eventBus = Objects.requireNonNull(eventBus, "事件总线不能为空");
-        this.runtimeMode = Objects.requireNonNull(runtimeMode, "运行模式不能为空");
-        this.pluginsDataRoot = Objects.requireNonNull(pluginsDataRoot, "插件数据根目录不能为空");
+    protected AbstractPluginManager(CoreConfig coreConfig,
+                                    PluginFacade pluginFacade,
+                                    ExtensionFacade extensionFacade,
+                                    ConfigFacade configFacade,
+                                    EventBusFacade eventBusFacade) {
+        this.coreConfig = Objects.requireNonNull(coreConfig, "核心配置不能为空");
+        this.pluginFacade = Objects.requireNonNull(pluginFacade, "插件门面不能为空");
+        this.extensionFacade = Objects.requireNonNull(extensionFacade, "扩展门面不能为空");
+        this.configFacade = Objects.requireNonNull(configFacade, "配置门面不能为空");
+        this.eventBusFacade = Objects.requireNonNull(eventBusFacade, "事件总线门面不能为空");
     }
-
-    /**
-     * 初始化插件组件。
-     * <p>子类应在构造函数中调用此方法，完成 Discoverer、Resolver 和 Loader 的初始化。</p>
-     */
-    protected void initializeComponents() {
-        this.pluginDiscoverer = createPluginDiscoverer();
-        this.pluginResolver = createPluginResolver();
-        this.pluginLoader = createPluginLoader();
-    }
-
-    /**
-     * 创建插件发现器。
-     *
-     * @return 插件发现器实例
-     */
-    protected abstract PluginDiscoverer createPluginDiscoverer();
-
-    /**
-     * 创建插件解析器。
-     *
-     * @return 插件解析器实例
-     */
-    protected abstract PluginResolver createPluginResolver();
-
-    /**
-     * 创建插件加载器。
-     *
-     * @return 插件加载器实例
-     */
-    protected abstract PluginLoader createPluginLoader();
 
     /**
      * 创建插件上下文。
@@ -138,19 +95,17 @@ public abstract class AbstractPluginManager implements PluginManager {
         PluginRuntime runtime = new PluginRuntime(wrapper::state);
 
         // Workspace 采用懒加载，首次访问时才创建目录
-        PluginWorkspace workspace = new PluginWorkspace(pluginsDataRoot.resolve("workspace").resolve(pluginId));
+        PluginWorkspace workspace = new PluginWorkspace(coreConfig.pluginsDataRoot().resolve("workspace").resolve(pluginId));
 
         // 从配置中心读取核心版本号，若不可用则使用默认值
-        String coreVersion = configManager != null
-                ? configManager.get("platform", "coreVersion").orElse("1.0.0")
-                : "1.0.0";
+        String coreVersion = configFacade.get("platform", "coreVersion").orElse("1.0.0");
 
         PlatformAccess platform = new PlatformAccess(
-                extensionRegistry,
-                eventBus::publish,
-                runtimeMode,
+                extensionFacade.extensionRegistry(),
+                eventBusFacade::publish,
+                coreConfig.runtimeMode(),
                 coreVersion,
-                configManager,
+                configFacade.configManager(),
                 platformServices
         );
 
@@ -188,7 +143,7 @@ public abstract class AbstractPluginManager implements PluginManager {
             }
 
             wrapper.state(target);
-            eventBus.publish(new PluginStateChangedEvent(wrapper, from, target));
+            eventBusFacade.publish(new PluginStateChangedEvent(wrapper, from, target));
         }
     }
 
@@ -203,8 +158,8 @@ public abstract class AbstractPluginManager implements PluginManager {
         synchronized (lifecycleLock) {
             PluginState from = wrapper.state();
             wrapper.state(PluginState.FAILED);
-            eventBus.publish(new PluginStateChangedEvent(wrapper, from, PluginState.FAILED));
-            eventBus.publish(new PluginFailureEvent(wrapper.descriptor(), e));
+            eventBusFacade.publish(new PluginStateChangedEvent(wrapper, from, PluginState.FAILED));
+            eventBusFacade.publish(new PluginFailureEvent(wrapper.descriptor(), e));
         }
     }
 
@@ -228,14 +183,14 @@ public abstract class AbstractPluginManager implements PluginManager {
 
     @Override
     public List<PluginMetadata> discover() {
-        eventBus.publish(new PluginProcessEvent(
+        eventBusFacade.publish(new PluginProcessEvent(
                 PluginProcessEvent.Phase.DISCOVER,
                 PluginProcessEvent.Stage.START,
                 0));
 
-        List<PluginMetadata> candidates = pluginDiscoverer.discover();
+        List<PluginMetadata> candidates = pluginFacade.createDiscoverer().discover();
 
-        eventBus.publish(new PluginProcessEvent(
+        eventBusFacade.publish(new PluginProcessEvent(
                 PluginProcessEvent.Phase.DISCOVER,
                 PluginProcessEvent.Stage.END,
                 candidates.size()));
@@ -245,14 +200,14 @@ public abstract class AbstractPluginManager implements PluginManager {
 
     @Override
     public List<PluginMetadata> resolve(List<PluginMetadata> discovered) {
-        eventBus.publish(new PluginProcessEvent(
+        eventBusFacade.publish(new PluginProcessEvent(
                 PluginProcessEvent.Phase.RESOLVE,
                 PluginProcessEvent.Stage.START,
                 discovered.size()));
 
-        List<PluginMetadata> resolved = pluginResolver.resolve(discovered);
+        List<PluginMetadata> resolved = pluginFacade.createResolver().resolve(discovered);
 
-        eventBus.publish(new PluginProcessEvent(
+        eventBusFacade.publish(new PluginProcessEvent(
                 PluginProcessEvent.Phase.RESOLVE,
                 PluginProcessEvent.Stage.END,
                 resolved.size()));
@@ -262,7 +217,7 @@ public abstract class AbstractPluginManager implements PluginManager {
 
     @Override
     public List<PluginWrapper> load(List<PluginMetadata> resolved) {
-        eventBus.publish(new PluginProcessEvent(
+        eventBusFacade.publish(new PluginProcessEvent(
                 PluginProcessEvent.Phase.LOAD,
                 PluginProcessEvent.Stage.START,
                 resolved.size()));
@@ -272,15 +227,15 @@ public abstract class AbstractPluginManager implements PluginManager {
         for (PluginMetadata metadata : resolved) {
             String pluginId = metadata.pluginId();
 
-            if (pluginRegistry.contains(pluginId)) {
+            if (pluginFacade.pluginRegistry().contains(pluginId)) {
                 log.debug("插件已存在，跳过加载: {}", pluginId);
                 continue;
             }
 
             try {
-                PluginWrapper wrapper = pluginLoader.load(metadata);
+                PluginWrapper wrapper = pluginFacade.pluginLoader().load(metadata);
                 transition(wrapper, PluginState.LOADED);
-                pluginRegistry.register(wrapper);
+                pluginFacade.pluginRegistry().register(wrapper);
 
                 // 加载并注册 Schema
                 loadAndRegisterSchema(wrapper);
@@ -289,11 +244,11 @@ public abstract class AbstractPluginManager implements PluginManager {
             } catch (Exception e) {
                 log.error("插件加载失败: {} (来源类型: {})",
                         pluginId, metadata.sourceType(), e);
-                eventBus.publish(new PluginFailureEvent(metadata.descriptor(), e));
+                eventBusFacade.publish(new PluginFailureEvent(metadata.descriptor(), e));
             }
         }
 
-        eventBus.publish(new PluginProcessEvent(
+        eventBusFacade.publish(new PluginProcessEvent(
                 PluginProcessEvent.Phase.LOAD,
                 PluginProcessEvent.Stage.END,
                 wrappers.size()));
@@ -307,14 +262,10 @@ public abstract class AbstractPluginManager implements PluginManager {
      * @param wrapper 插件包装对象
      */
     protected void loadAndRegisterSchema(PluginWrapper wrapper) {
-        if (configManager == null) {
-            return;
-        }
-
         try {
             String pluginId = wrapper.getPluginId();
             ClassLoader classLoader = wrapper.classLoader();
-            configManager.registerPlugin(pluginId, classLoader);
+            configFacade.registerPlugin(pluginId, classLoader);
         } catch (Exception e) {
             log.warn("加载插件 Schema 失败: {}", wrapper.getPluginId(), e);
         }
@@ -423,10 +374,10 @@ public abstract class AbstractPluginManager implements PluginManager {
         }
 
         // 3. 从扩展注册中心清理该插件注册的所有扩展
-        extensionRegistry.unregisterByPluginId(pluginId);
+        extensionFacade.unregisterPlugin(pluginId);
 
         // 4. 从事件总线取消该插件的所有监听器
-        eventBus.unsubscribeByPlugin(pluginId);
+        eventBusFacade.unsubscribeByPlugin(pluginId);
 
         // 5. 释放 JVM 资源
         closeIfPossible(wrapper.classLoader());
@@ -458,12 +409,12 @@ public abstract class AbstractPluginManager implements PluginManager {
         }
 
         // 从注册中心移除
-        pluginRegistry.unregister(pluginId);
+        pluginFacade.pluginRegistry().unregister(pluginId);
 
         // 移除上下文缓存
         pluginContexts.remove(pluginId);
 
-        eventBus.publish(new PluginProcessEvent(
+        eventBusFacade.publish(new PluginProcessEvent(
                 PluginProcessEvent.Phase.DELETE,
                 PluginProcessEvent.Stage.END,
                 1));
@@ -480,9 +431,7 @@ public abstract class AbstractPluginManager implements PluginManager {
         transition(wrapper, PluginState.STARTING);
 
         // 移除禁用状态持久化
-        if (configManager != null) {
-            configManager.setPluginDisabled(pluginId, false);
-        }
+        configFacade.setPluginDisabled(pluginId, false);
 
         Plugin plugin = wrapper.plugin();
         if (plugin != null) {
@@ -510,9 +459,7 @@ public abstract class AbstractPluginManager implements PluginManager {
         transition(wrapper, PluginState.DISABLED);
 
         // 持久化禁用状态
-        if (configManager != null) {
-            configManager.setPluginDisabled(pluginId, true);
-        }
+        configFacade.setPluginDisabled(pluginId, true);
 
         Plugin plugin = wrapper.plugin();
         if (plugin != null) {
@@ -528,7 +475,7 @@ public abstract class AbstractPluginManager implements PluginManager {
 
     @Override
     public boolean isEnabled(String pluginId) {
-        PluginWrapper wrapper = pluginRegistry.get(pluginId);
+        PluginWrapper wrapper = pluginFacade.pluginRegistry().get(pluginId);
         return wrapper != null && wrapper.state() != PluginState.DISABLED;
     }
 
@@ -551,14 +498,14 @@ public abstract class AbstractPluginManager implements PluginManager {
 
     @Override
     public Collection<PluginWrapper> listByState(PluginState state) {
-        return pluginRegistry.list().stream()
+        return pluginFacade.pluginRegistry().list().stream()
                 .filter(w -> w.state() == state)
                 .toList();
     }
 
     @Override
     public boolean isActive(String pluginId) {
-        PluginWrapper wrapper = pluginRegistry.get(pluginId);
+        PluginWrapper wrapper = pluginFacade.pluginRegistry().get(pluginId);
         return wrapper != null && wrapper.state() == PluginState.ACTIVE;
     }
 
@@ -604,7 +551,7 @@ public abstract class AbstractPluginManager implements PluginManager {
      * @throws PluginLoadException 如果插件不存在
      */
     protected PluginWrapper require(String pluginId) {
-        PluginWrapper wrapper = pluginRegistry.get(pluginId);
+        PluginWrapper wrapper = pluginFacade.pluginRegistry().get(pluginId);
         if (wrapper == null) {
             throw new PluginLoadException("插件不存在: " + pluginId);
         }

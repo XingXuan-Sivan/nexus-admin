@@ -1,6 +1,6 @@
 package com.nexusadmin.app.controller;
 
-import com.nexusadmin.api.result.DataResult;
+import com.nexusadmin.api.domain.result.DataResult;
 import com.nexusadmin.core.config.ConfigManager;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

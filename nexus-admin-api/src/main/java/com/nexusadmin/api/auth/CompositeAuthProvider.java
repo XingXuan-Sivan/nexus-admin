@@ -1,6 +1,9 @@
 package com.nexusadmin.api.auth;
 
 import com.nexusadmin.api.context.InvocationContext;
+import com.nexusadmin.api.domain.identity.CurrentUserInfo;
+import com.nexusadmin.api.domain.identity.LoginRequest;
+import com.nexusadmin.api.domain.identity.TokenResponse;
 import com.nexusadmin.api.extension.auth.AuthProvider;
 import com.nexusadmin.api.extension.auth.AuthProvider.AuthRequest;
 import com.nexusadmin.api.extension.auth.AuthProvider.AuthResult;
@@ -82,6 +85,161 @@ public class CompositeAuthProvider {
                 .status(AuthStatus.FAILED)
                 .message("认证失败")
                 .build();
+    }
+
+    /**
+     * 验证 Bearer Token，按优先级依次委托给所有活跃的认证提供者。
+     *
+     * @param token   Bearer Token
+     * @param context 调用上下文
+     * @return 认证结果
+     */
+    public AuthResult validateToken(String token, InvocationContext context) {
+        List<AuthProvider> providers = resolveActiveProviders();
+
+        if (providers.isEmpty()) {
+            log.warn("没有可用的认证提供者");
+            return AuthResult.builder()
+                    .status(AuthStatus.FAILED)
+                    .message("没有可用的认证提供者")
+                    .build();
+        }
+
+        for (AuthProvider provider : providers) {
+            try {
+                AuthResult result = provider.validateToken(token, context);
+                if (result.status() == AuthStatus.SUCCESS) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Token 验证成功，提供者: {}", provider.getClass().getSimpleName());
+                    }
+                    return result;
+                }
+            } catch (Exception e) {
+                log.warn("Token 验证提供者执行异常: {} - {}",
+                        provider.getClass().getSimpleName(), e.getMessage());
+            }
+        }
+
+        log.debug("所有认证提供者均 Token 验证失败");
+        return AuthResult.builder()
+                .status(AuthStatus.FAILED)
+                .message("Token 无效或已过期")
+                .build();
+    }
+
+    /**
+     * 执行登录，按优先级依次委托给所有活跃的认证提供者。
+     *
+     * @param request 登录请求
+     * @param context 调用上下文
+     * @return Token 响应，所有提供者均失败时返回 null
+     */
+    public TokenResponse login(LoginRequest request, InvocationContext context) {
+        List<AuthProvider> providers = resolveActiveProviders();
+
+        for (AuthProvider provider : providers) {
+            try {
+                TokenResponse response = provider.login(request, context);
+                if (response != null) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("登录成功，提供者: {}", provider.getClass().getSimpleName());
+                    }
+                    return response;
+                }
+            } catch (Exception e) {
+                log.warn("登录提供者执行异常: {} - {}",
+                        provider.getClass().getSimpleName(), e.getMessage());
+            }
+        }
+
+        log.debug("所有认证提供者均登录失败，用户: {}", request.username());
+        return null;
+    }
+
+    /**
+     * 执行登出，通知所有活跃的认证提供者销毁 Token。
+     *
+     * @param token   访问令牌
+     * @param context 调用上下文
+     * @return 是否有提供者成功处理登出
+     */
+    public boolean logout(String token, InvocationContext context) {
+        List<AuthProvider> providers = resolveActiveProviders();
+
+        for (AuthProvider provider : providers) {
+            try {
+                if (provider.logout(token, context)) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("登出成功，提供者: {}", provider.getClass().getSimpleName());
+                    }
+                    return true;
+                }
+            } catch (Exception e) {
+                log.warn("登出提供者执行异常: {} - {}",
+                        provider.getClass().getSimpleName(), e.getMessage());
+            }
+        }
+
+        log.debug("所有认证提供者均未处理登出");
+        return false;
+    }
+
+    /**
+     * 刷新访问令牌，按优先级依次委托给所有活跃的认证提供者。
+     *
+     * @param refreshToken 刷新令牌
+     * @param context      调用上下文
+     * @return 新的 Token 响应，所有提供者均失败时返回 null
+     */
+    public TokenResponse refresh(String refreshToken, InvocationContext context) {
+        List<AuthProvider> providers = resolveActiveProviders();
+
+        for (AuthProvider provider : providers) {
+            try {
+                TokenResponse response = provider.refresh(refreshToken, context);
+                if (response != null) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("刷新 Token 成功，提供者: {}", provider.getClass().getSimpleName());
+                    }
+                    return response;
+                }
+            } catch (Exception e) {
+                log.warn("刷新 Token 提供者执行异常: {} - {}",
+                        provider.getClass().getSimpleName(), e.getMessage());
+            }
+        }
+
+        log.debug("所有认证提供者均刷新 Token 失败");
+        return null;
+    }
+
+    /**
+     * 获取当前用户信息，按优先级依次委托给所有活跃的认证提供者。
+     *
+     * @param token   访问令牌
+     * @param context 调用上下文
+     * @return 当前用户信息，所有提供者均失败时返回 null
+     */
+    public CurrentUserInfo getCurrentUser(String token, InvocationContext context) {
+        List<AuthProvider> providers = resolveActiveProviders();
+
+        for (AuthProvider provider : providers) {
+            try {
+                CurrentUserInfo user = provider.getCurrentUser(token, context);
+                if (user != null) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("获取用户信息成功，提供者: {}", provider.getClass().getSimpleName());
+                    }
+                    return user;
+                }
+            } catch (Exception e) {
+                log.warn("获取用户信息提供者执行异常: {} - {}",
+                        provider.getClass().getSimpleName(), e.getMessage());
+            }
+        }
+
+        log.debug("所有认证提供者均未获取到用户信息");
+        return null;
     }
 
     /**

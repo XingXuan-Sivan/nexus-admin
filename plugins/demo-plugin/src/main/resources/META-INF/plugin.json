@@ -2,5 +2,31 @@
   "id": "demo-plugin",
   "version": "1.0.0",
   "mainClass": "com.nexusadmin.plugin.demo.DemoPlugin",
-  "description": "示例插件"
+  "description": "示例插件",
+  "contributes": {
+    "menus": [
+      {
+        "id": "demo-menu",
+        "label": "示例功能",
+        "icon": "experiment",
+        "order": 100,
+        "route": "/demo"
+      }
+    ],
+    "routes": [
+      {
+        "path": "/demo",
+        "component": "demo-plugin/pages/Index",
+        "title": "示例页面",
+        "icon": "experiment"
+      }
+    ],
+    "permissions": [
+      {
+        "id": "demo.view",
+        "label": "查看示例",
+        "description": "查看示例插件页面"
+      }
+    ]
+  }
 }

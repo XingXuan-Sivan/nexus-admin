@@ -12,7 +12,7 @@ Nexus Admin 采用微内核架构，通过 ExtensionRegistry 管理扩展点实�
 
 3. **AuthChallengeHandler 未纳入扩展点体系**：不继承 `ExtensionPoint`，在 `AdminAutoConfig` 中硬编码选择 `BootstrapAuthChallengeHandler` 或 `DefaultAuthChallengeHandler`，运行时无法切换。
 
-4. **装配职责不清晰**：`AdminAutoConfig`（api模块）同时负责认证组件装配和 AdminFacade 装配，缺少专门的扩展点注册配置类。
+4. **装配职责不清晰**：`AdminAutoConfig`（api模块）同时负责认证组件装配和管理面板基础设施装配，缺少专门的扩展点注册配置类。
 
 ------
 
@@ -772,20 +772,23 @@ public class BootstrapAuthProvider implements AuthProvider {
 
 **当前问题**：
 
-- `AdminAutoConfig`（api模块）同时负责认证组件装配和 AdminFacade 装配
+- `ApiAutoConfig`（api模块）虽已拆分出 `AuthExtensionConfig`，但装配职责描述需进一步明确
 - 缺少专门的扩展点注册配置类
 
 **改造方案**：
 
-将 `AdminAutoConfig` 拆分为两个配置类：
+将 `AdminAutoConfig` 拆分为 `ApiAutoConfig`（负责组件扫描）和 `ApiInfraAutoConfig`（负责管理面板基础设施装配）：
 
 ```text
-AdminAutoConfig（api模块）
-  ├─ 保留：AdminFacade 装配
-  ├─ 保留：AuthFilter 装配
-  └─ 保留：@ComponentScan("com.nexusadmin.api")
+ApiAutoConfig（api模块）
+  └─ @ComponentScan("com.nexusadmin.api")  — 组件扫描
 
-AuthExtensionConfig（api模块，新增）
+ApiInfraAutoConfig（api模块）
+  ├─ UIContributionRegistry 装配
+  ├─ PermissionInterceptor 装配
+  └─ PluginStaticResourceController 装配
+
+AuthExtensionConfig（api模块）
   ├─ BootstrapAuthProvider 注册到 ExtensionRegistry
   ├─ CompositeAuthProvider 装配（注入 ExtensionRegistry）
   ├─ BootstrapAuthChallengeHandler 注册到 ExtensionRegistry
@@ -844,44 +847,16 @@ public class AuthExtensionConfig {
 }
 
 
-// ==================== AdminAutoConfig（精简后） ====================
+// ==================== ApiAutoConfig（精简后） ====================
 
 /**
- * 管理面板自动配置。
+ * API 模块自动配置。
  * <p>
- * 职责边界：
- * <ul>
- *   <li>AuthFilter 装配（认证过滤器）</li>
- *   <li>AdminFacade 装配（管理门面）</li>
- * </ul>
- * <p>
- * 认证扩展点注册已迁移至 {@link AuthExtensionConfig}。
+ * 通过组件扫描发现 Controller、Service 等 Spring 组件。
  */
 @Configuration
 @ComponentScan("com.nexusadmin.api")
-public class AdminAutoConfig {
-
-    @Bean
-    public FilterRegistrationBean<AuthFilter> adminAuthFilter(
-            ExtensionRegistry extensionRegistry) {
-        AuthFilter filter = new AuthFilter(extensionRegistry);
-        FilterRegistrationBean<AuthFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(filter);
-        registration.addUrlPatterns("/admin/*");
-        registration.setName("adminAuthFilter");
-        registration.setOrder(1);
-        return registration;
-    }
-
-    @Bean
-    public AdminFacade adminFacade(PluginManager pluginManager,
-                                    ConfigManager configManager) {
-        AdminFacade facade = new AdminFacadeImpl(pluginManager, configManager);
-        if (pluginManager instanceof DefaultPluginManager dpm) {
-            dpm.platformServices().register(AdminFacade.class, facade);
-        }
-        return facade;
-    }
+public class ApiAutoConfig {
 }
 ```
 
@@ -995,7 +970,7 @@ app 中对 core 类的直接引用需要评估：
 |--------|---------|------|---------|
 | `CoreAutoConfig`（新增） | api | 装配 core 默认实现，确保"毛坯房"基本可用 | ExtensionRegistry (DefaultExtensionRegistry)、EventBus (SyncEventBus)、PluginRegistry (DefaultPluginRegistry)、VersionManager (DefaultVersionManager)、DependenceManager (DefaultDependenceManager)、PluginLoader (DefaultPluginLoader) |
 | `AuthExtensionConfig`（从 AdminAutoConfig 拆分） | api | 认证扩展点注册与装配 | BootstrapAuthProvider → 注册到 ExtensionRegistry、CompositeAuthProvider → 使用 ExtensionConsumer、AuthChallengeHandler → BootstrapAuthChallengeHandler 注册到 ExtensionRegistry、AuthFilter |
-| `AdminAutoConfig`（精简后） | api | 管理面板门面装配 | AdminFacade、@ComponentScan |
+| `AdminAutoConfig`（精简后） | api | 组件扫描 | @ComponentScan |
 | `BootstrapConfig`（精简后） | app | 平台启动装配 | PlatformProperties 绑定、RuntimeMode、PluginDescriptorFinder / PluginDescriptorParser / PluginSource、PluginManager（DefaultPluginManager，聚合所有组件）、ConfigManager（从 PluginManager 获取）、BootstrapRunner / StartupNotifier |
 | `WebEndpointAutoConfig` | app | Web 端点相关 | 保持不变 |
 
@@ -1049,39 +1024,38 @@ api 层对 core 核心实现进行门面包装，业务层应尽量与门面交�
 
 | 维度 | 评价 | 合规度 |
 |------|------|--------|
-| AdminFacade 体系 | 设计良好 | 100% |
+| Service 层架构 | 设计良好 | 100% |
 | 控制器层访问方式 | 完全通过门面访问 core | 95%+ |
 | View 类（Record VO） | 设计规范，防御性拷贝到位 | 100% |
 | ExtensionRegistry / EventBus 等核心组件 | 缺乏门面包装，直接暴露 | 不符合 |
 
-### 门面体系扩展方案
+### Service 层架构方案
 
-保持现有 AdminFacade 聚合模式不变。新增门面需考虑的维度：
+Controller 通过 Service 层调用 core 门面，保持标准三层架构（Controller → Service → Core Facade）：
 
 | 维度 | 处理方式 |
 |------|---------|
-| 管理操作 | 走 AdminFacade 体系 |
-| 运行时能力（扩展点消费） | 通过 ExtensionConsumer 直接使用，不需要额外门面 |
+| 管理操作 | 走 Service 层（PluginService、ConfigService、SystemStatusService 等） |
+| 运行时能力（扩展点消费） | 通过 ExtensionConsumer 直接使用，不需要额外 Service 包装 |
 
-**明确边界**：门面包装的对象是"管理面板需要暴露的操作"，而非所有 core 组件都需要门面。
+**明确边界**：管理面板通过 Service 层暴露操作，Service 负责 View 转换与异常翻译，直接调用 core 门面（ConfigFacade、PluginFacade 等）。
 
-### 门面规范
+### Service 层规范
 
 | 规范项 | 要求 |
 |--------|------|
-| 接口位置 | api 模块 `management/` 包下 |
-| 实现位置 | api 模块 `management/impl/` 包下 |
-| 参数/返回值 | 使用 View（Record VO），不暴露 core 类型 |
-| 异常处理 | 门面负责异常转换（core 异常 → api 层 PluginOperationException） |
-| 内部交互 | 通过 core 接口（而非 Default* 实现类）交互 |
+| 包位置 | api 模块 `service/` 包下 |
+| 参数/返回值 | 使用 domain 中的 View 记录，不暴露 core 类型 |
+| 异常处理 | Service 负责异常转换（core 异常 → api 层 PluginOperationException） |
+| 内部交互 | 通过 core 门面接口（而非 Default* 实现类）交互 |
 
 ### 未来演进方向
 
-| 需求场景 | 门面方案 |
-|---------|---------|
-| 暴露扩展点管理能力（查询已注册扩展、动态启用/禁用） | 在 AdminFacade 下新增 `ExtensionAdminFacade` |
-| 事件管理能力（查询监听器、发布事件审计） | 新增 `EventAdminFacade` |
-| 保持 AdminFacade 作为聚合根 | 所有管理门面统一纳入 AdminFacade 体系 |
+| 需求场景 | 方案 |
+|---------|------|
+| 暴露扩展点管理能力（查询已注册扩展、动态启用/禁用） | 新增 `ExtensionService` |
+| 事件管理能力（查询监听器、发布事件审计） | 新增 `EventService` |
+| 保持 Controller → Service → Core Facade 三层架构 | 所有管理操作统一走 Service 层 |
 
 ------
 
@@ -1105,8 +1079,8 @@ api 层对 core 核心实现进行门面包装，业务层应尽量与门面交�
 | 7 | BootstrapAuthProvider 集成 ConfigManager（支持凭据热更新） | api | 中（安全敏感） |
 | 8 | PlatformInfoView 从 ConfigManager 读取平台信息 | api | 低 |
 | 9 | 迁移 platform.plugin.auto-start 到配置中心 | api/app | 低 |
-| 10 | api 模块新增 CoreAutoConfig | api | 低 |
-| 11 | AdminAutoConfig 拆分为 CoreAutoConfig + AuthExtensionConfig + AdminAutoConfig | api | 低 |
+| 10 | api 模块新增 4 个 AutoConfig（EventBus/Extension/Config/Plugin） | api | 低 |
+| 11 | AdminAutoConfig 拆分为 ApiAutoConfig + ApiInfraAutoConfig + AuthExtensionConfig | api | 低 |
 | 12 | BootstrapConfig 精简（通用组件下沉到 api） | app | 低 |
 
 ### P2 - 增强（事件通知、缓存与门面规范化）
@@ -1116,7 +1090,7 @@ api 层对 core 核心实现进行门面包装，业务层应尽量与门面交�
 | 13 | ExtensionRegistry 发布变更事件（注册/注销时） | core | 中（核心组件） |
 | 14 | 实现 ExtensionConsumer 缓存策略（替代 ExtensionPointProxy） | core | 低 |
 | 15 | CompositeAuthProvider 启用 ExtensionConsumer | api | 低 |
-| 16 | 门面规范化审查（AdminFacade 体系扩展评估） | api | 低 |
+| 16 | Service 层架构审查（三层架构规范化评估） | api | 低 |
 
 ### P3 - 通用化（其他扩展点）
 
@@ -1136,7 +1110,7 @@ api 层对 core 核心实现进行门面包装，业务层应尽量与门面交�
 | 模块 | 影响说明 |
 |------|---------|
 | nexus-admin-core | ExtensionRegistry 需增加变更事件发布能力；platform.yml Schema 扩展；新增 ExtensionConsumer |
-| nexus-admin-api | CompositeAuthProvider、BootstrapAuthProvider、AuthChallengeHandler 改造；新增 AuthExtensionConfig、CoreAutoConfig；AdminAutoConfig 精简；新增门面评估 |
+| nexus-admin-api | CompositeAuthProvider、BootstrapAuthProvider、AuthChallengeHandler 改造；新增 AuthExtensionConfig、4 个 AutoConfig；AdminAutoConfig 精简；Service 层架构审查 |
 | nexus-admin-app | application.yml 配置项调整；POM 移除对 core 的直接依赖；BootstrapConfig 精简 |
 
 ### 文件变更清单

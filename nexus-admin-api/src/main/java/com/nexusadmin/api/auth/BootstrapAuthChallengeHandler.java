@@ -29,7 +29,7 @@ public class BootstrapAuthChallengeHandler implements AuthChallengeHandler {
     private static final Logger log = LoggerFactory.getLogger(BootstrapAuthChallengeHandler.class);
 
     private static final String LOGIN_PATH = "/admin/login";
-    private static final String LOGIN_POST_PATH = "/admin/auth/login";
+    private static final String LOGIN_POST_PATH = "/admin/v1/auth/login";
     private static final String TEMPLATE_PATH = "templates/bootstrap-login.html";
     private static final String ERROR_PLACEHOLDER = "{{ERROR_MESSAGE}}";
     private static final String SESSION_FLASH_ERROR = "loginFlashError";

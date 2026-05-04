@@ -6,10 +6,9 @@ import com.nexusadmin.core.config.event.ConfigListener;
 import com.nexusadmin.core.config.resolver.ConfigResolver;
 import com.nexusadmin.core.config.resolver.ConfigSource;
 import com.nexusadmin.core.config.schema.ConfigSchema;
-import com.nexusadmin.core.config.schema.PlatformSchemaProvider;
 import com.nexusadmin.core.config.schema.SchemaProvider;
 import com.nexusadmin.core.config.schema.SchemaRegistry;
-import com.nexusadmin.core.config.schema.YamlPluginSchemaProvider;
+import com.nexusadmin.core.config.schema.SchemaValidator;
 import com.nexusadmin.core.config.store.ConfigStore;
 import com.nexusadmin.core.event.EventBus;
 import org.slf4j.Logger;
@@ -61,6 +60,11 @@ public class DefaultConfigManager implements ConfigManager {
     private final List<SchemaProvider> schemaProviders = new CopyOnWriteArrayList<>();
 
     /**
+     * Schema 验证器列表。
+     */
+    private final List<SchemaValidator> schemaValidators = new CopyOnWriteArrayList<>();
+
+    /**
      * 配置监听器列表。
      */
     private final List<ConfigListener> listeners = new CopyOnWriteArrayList<>();
@@ -72,6 +76,8 @@ public class DefaultConfigManager implements ConfigManager {
 
     /**
      * 构造默认配置管理器。
+     * <p>使用默认的 UI 构建器，不自动注册默认 Schema 提供者和验证器，
+     * 由运行时统一负责注册。</p>
      *
      * @param resolver       配置解析器
      * @param schemaRegistry Schema 注册中心
@@ -82,15 +88,30 @@ public class DefaultConfigManager implements ConfigManager {
                                 SchemaRegistry schemaRegistry,
                                 ConfigStore configStore,
                                 EventBus eventBus) {
+        this(resolver, schemaRegistry, configStore, eventBus, new ConfigUIBuilder(schemaRegistry));
+    }
+
+    /**
+     * 构造默认配置管理器，指定 UI 构建器。
+     * <p>由 {@link com.nexusadmin.core.runtime.ConfigRuntime} 调用，
+     * 不自动注册默认 Schema 提供者和验证器，由运行时统一负责注册。</p>
+     *
+     * @param resolver       配置解析器
+     * @param schemaRegistry Schema 注册中心
+     * @param configStore    配置存储
+     * @param eventBus       事件总线
+     * @param uiBuilder      UI 构建器
+     */
+    public DefaultConfigManager(ConfigResolver resolver,
+                                SchemaRegistry schemaRegistry,
+                                ConfigStore configStore,
+                                EventBus eventBus,
+                                ConfigUIBuilder uiBuilder) {
         this.resolver = Objects.requireNonNull(resolver, "配置解析器不能为空");
         this.schemaRegistry = Objects.requireNonNull(schemaRegistry, "Schema 注册中心不能为空");
         this.configStore = Objects.requireNonNull(configStore, "配置存储不能为空");
         this.eventBus = Objects.requireNonNull(eventBus, "事件总线不能为空");
-        this.uiBuilder = new ConfigUIBuilder(schemaRegistry);
-
-        // 注册默认 Schema 提供者
-        registerSchemaProvider(new YamlPluginSchemaProvider());
-        registerSchemaProvider(new PlatformSchemaProvider());
+        this.uiBuilder = Objects.requireNonNull(uiBuilder, "UI 构建器不能为空");
 
         log.info("配置管理器已初始化");
     }
@@ -305,6 +326,17 @@ public class DefaultConfigManager implements ConfigManager {
         schemaProviders.add(provider);
         schemaProviders.sort(java.util.Comparator.comparingInt(SchemaProvider::priority));
         log.debug("已注册 Schema 提供者: {}", provider.name());
+    }
+
+    /**
+     * 注册 Schema 验证器。
+     *
+     * @param validator Schema 验证器
+     */
+    public void registerSchemaValidator(SchemaValidator validator) {
+        schemaValidators.add(validator);
+        schemaValidators.sort(java.util.Comparator.comparingInt(SchemaValidator::priority));
+        log.debug("已注册 Schema 验证器: {}", validator.name());
     }
 
     /**

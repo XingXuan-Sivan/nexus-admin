@@ -29,6 +29,7 @@ public final class PluginDescriptor {
     private final Map<String, String> dependencies;
     private final Map<String, Object> requires;
     private final Map<String, Object> metadata;
+    private final PluginContributes contributes;
 
     /**
      * 构造插件描述对象。
@@ -43,6 +44,7 @@ public final class PluginDescriptor {
      * @param dependencies 依赖的其他插件列表，可为空
      * @param requires    运行环境要求，可为空
      * @param metadata    其他扩展元数据，可为空
+     * @param contributes 插件贡献声明，可为空
      * @throws DescriptorParseException 当 id 或 version 不合法时抛出
      */
     public PluginDescriptor(String id,
@@ -54,7 +56,8 @@ public final class PluginDescriptor {
                             String coreVersion,
                             Map<String, String> dependencies,
                             Map<String, Object> requires,
-                            Map<String, Object> metadata) {
+                            Map<String, Object> metadata,
+                            PluginContributes contributes) {
         validate(id, version);
         this.id = id;
         this.version = version;
@@ -72,6 +75,35 @@ public final class PluginDescriptor {
         this.metadata = (metadata == null)
                 ? Collections.emptyMap()
                 : Collections.unmodifiableMap(new HashMap<>(metadata));
+        this.contributes = (contributes == null) ? PluginContributes.EMPTY : contributes;
+    }
+
+    /**
+     * 兼容构造方法，不指定 contributes 时默认为空贡献。
+     *
+     * @param id          插件唯一标识
+     * @param version     插件版本号
+     * @param name        插件名称
+     * @param description 插件描述
+     * @param author      插件作者
+     * @param mainClass   插件入口类全限定名
+     * @param coreVersion 支持的核心版本范围
+     * @param dependencies 依赖的其他插件列表
+     * @param requires    运行环境要求
+     * @param metadata    其他扩展元数据
+     */
+    public PluginDescriptor(String id,
+                            String version,
+                            String name,
+                            String description,
+                            String author,
+                            String mainClass,
+                            String coreVersion,
+                            Map<String, String> dependencies,
+                            Map<String, Object> requires,
+                            Map<String, Object> metadata) {
+        this(id, version, name, description, author, mainClass,
+                coreVersion, dependencies, requires, metadata, null);
     }
 
     /**
@@ -179,6 +211,24 @@ public final class PluginDescriptor {
      */
     public boolean hasName() {
         return !name.isBlank();
+    }
+
+    /**
+     * 获取插件贡献声明。
+     *
+     * @return 贡献声明，不会为 null
+     */
+    public PluginContributes contributes() {
+        return contributes;
+    }
+
+    /**
+     * 判断插件是否有贡献声明。
+     *
+     * @return 如果 contributes 不为空则返回 true
+     */
+    public boolean hasContributes() {
+        return !contributes.isEmpty();
     }
 
     /**

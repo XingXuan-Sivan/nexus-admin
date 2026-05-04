@@ -1,6 +1,9 @@
 package com.nexusadmin.api.extension.auth;
 
 import com.nexusadmin.api.context.InvocationContext;
+import com.nexusadmin.api.domain.identity.CurrentUserInfo;
+import com.nexusadmin.api.domain.identity.LoginRequest;
+import com.nexusadmin.api.domain.identity.TokenResponse;
 import com.nexusadmin.core.extension.ExtensionPoint;
 
 import java.util.Collections;
@@ -147,6 +150,78 @@ public interface AuthProvider extends ExtensionPoint {
                 return new AuthResult(status, userId, message, attributes);
             }
         }
+    }
+
+    /**
+     * 验证 Bearer Token 的有效性。
+     * <p>
+     * 默认实现返回不支持，由具体认证提供者覆盖。
+     *
+     * @param token   Bearer Token
+     * @param context 调用上下文
+     * @return 认证结果
+     */
+    default AuthResult validateToken(String token, InvocationContext context) {
+        return AuthResult.builder()
+                .status(AuthStatus.FAILED)
+                .message("Token 验证不受支持")
+                .build();
+    }
+
+    /**
+     * 执行登录操作，返回 Token 信息。
+     * <p>
+     * 默认实现通过 {@link #authenticate} 向后兼容。
+     *
+     * @param request 登录请求
+     * @param context 调用上下文
+     * @return Token 响应，登录失败时返回 null
+     */
+    default TokenResponse login(LoginRequest request, InvocationContext context) {
+        AuthResult result = authenticate(new AuthRequest(request.username(), request.password(), null), context);
+        if (result.status() == AuthStatus.SUCCESS) {
+            return new TokenResponse("token-" + result.userId(), null, 3600, "Bearer");
+        }
+        return null;
+    }
+
+    /**
+     * 执行登出操作，销毁指定 Token。
+     * <p>
+     * 默认实现返回 false，由具体认证提供者覆盖。
+     *
+     * @param token   访问令牌
+     * @param context 调用上下文
+     * @return 是否成功销毁
+     */
+    default boolean logout(String token, InvocationContext context) {
+        return false;
+    }
+
+    /**
+     * 使用刷新令牌获取新的访问令牌。
+     * <p>
+     * 默认实现返回 null，由具体认证提供者覆盖。
+     *
+     * @param refreshToken 刷新令牌
+     * @param context      调用上下文
+     * @return 新的 Token 响应
+     */
+    default TokenResponse refresh(String refreshToken, InvocationContext context) {
+        return null;
+    }
+
+    /**
+     * 根据 Token 获取当前用户信息。
+     * <p>
+     * 默认实现返回 null，由具体认证提供者覆盖。
+     *
+     * @param token   访问令牌
+     * @param context 调用上下文
+     * @return 当前用户信息
+     */
+    default CurrentUserInfo getCurrentUser(String token, InvocationContext context) {
+        return null;
     }
 
     /**

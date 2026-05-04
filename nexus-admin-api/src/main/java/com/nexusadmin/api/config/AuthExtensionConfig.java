@@ -119,7 +119,7 @@ public class AuthExtensionConfig {
     /**
      * 管理面板认证过滤器。
      * <p>
-     * 拦截所有 /admin/* 请求，支持 Basic 认证、表单登录和 Session 认证。
+     * 拦截所有 /admin/v1/* 请求，支持 Bearer Token、Basic 认证、表单登录和 Session 认证。
      * 动态从扩展注册中心解析认证挑战处理器。
      *
      * @param authProvider             组合认证提供者
@@ -132,7 +132,7 @@ public class AuthExtensionConfig {
             ExtensionConsumer<AuthChallengeHandler> challengeHandlerConsumer) {
         FilterRegistrationBean<AuthFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(new AuthFilter(authProvider, challengeHandlerConsumer));
-        registration.addUrlPatterns("/admin/*");
+        registration.addUrlPatterns("/admin/v1/*");
         registration.setName("adminAuthFilter");
         registration.setOrder(1);
         return registration;

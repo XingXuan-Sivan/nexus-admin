@@ -1,10 +1,13 @@
 package com.nexusadmin.api.controller;
 
-import com.nexusadmin.api.facade.AdminFacade;
-import com.nexusadmin.api.facade.PluginDetailView;
-import com.nexusadmin.api.facade.PluginView;
-import com.nexusadmin.api.result.DataResult;
-import com.nexusadmin.api.result.Result;
+import com.nexusadmin.api.auth.RequirePermission;
+import com.nexusadmin.api.domain.view.PluginDetailView;
+import com.nexusadmin.api.domain.view.PluginView;
+import com.nexusadmin.api.domain.result.DataResult;
+import com.nexusadmin.api.domain.result.Result;
+import com.nexusadmin.api.service.PluginService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,21 +21,22 @@ import java.util.List;
  * 插件管理控制器。
  * <p>
  * 提供插件列表查询、启停控制等管理 API。
- * 作为平台内建能力，直接映射到 /admin/plugins 路径。
+ * 作为平台内建能力，直接映射到 /admin/v1/plugins 路径。
  */
 @RestController
-@RequestMapping("/admin/plugins")
+@RequestMapping("/admin/v1/plugins")
+@Tag(name = "插件管理")
 public class PluginManageController {
 
-    private final AdminFacade adminFacade;
+    private final PluginService pluginService;
 
     /**
      * 构造插件管理控制器。
      *
-     * @param adminFacade 管理门面
+     * @param pluginService 插件管理服务
      */
-    public PluginManageController(AdminFacade adminFacade) {
-        this.adminFacade = adminFacade;
+    public PluginManageController(PluginService pluginService) {
+        this.pluginService = pluginService;
     }
 
     /**
@@ -41,8 +45,10 @@ public class PluginManageController {
      * @return 插件摘要列表
      */
     @GetMapping
+    @RequirePermission("plugins.view")
+    @Operation(summary = "获取插件列表")
     public DataResult<List<PluginView>> listAll() {
-        return DataResult.success(adminFacade.plugins().listAll());
+        return DataResult.success(pluginService.listAll());
     }
 
     /**
@@ -52,8 +58,10 @@ public class PluginManageController {
      * @return 插件详情
      */
     @GetMapping("/{pluginId}")
+    @RequirePermission("plugins.view")
+    @Operation(summary = "获取插件详情")
     public DataResult<PluginDetailView> getDetail(@PathVariable("pluginId") String pluginId) {
-        return DataResult.success(adminFacade.plugins().getDetail(pluginId).orElse(null));
+        return DataResult.success(pluginService.getDetail(pluginId).orElse(null));
     }
 
     /**
@@ -63,8 +71,10 @@ public class PluginManageController {
      * @return 操作结果
      */
     @PostMapping("/{pluginId}/start")
+    @RequirePermission("plugins.manage")
+    @Operation(summary = "启动插件")
     public Result start(@PathVariable("pluginId") String pluginId) {
-        adminFacade.plugins().start(pluginId);
+        pluginService.start(pluginId);
         return Result.success();
     }
 
@@ -75,8 +85,10 @@ public class PluginManageController {
      * @return 操作结果
      */
     @PostMapping("/{pluginId}/stop")
+    @RequirePermission("plugins.manage")
+    @Operation(summary = "停止插件")
     public Result stop(@PathVariable("pluginId") String pluginId) {
-        adminFacade.plugins().stop(pluginId);
+        pluginService.stop(pluginId);
         return Result.success();
     }
 
@@ -87,8 +99,10 @@ public class PluginManageController {
      * @return 操作结果
      */
     @PostMapping("/{pluginId}/enable")
+    @RequirePermission("plugins.manage")
+    @Operation(summary = "启用插件")
     public Result enable(@PathVariable("pluginId") String pluginId) {
-        adminFacade.plugins().enable(pluginId);
+        pluginService.enable(pluginId);
         return Result.success();
     }
 
@@ -99,8 +113,10 @@ public class PluginManageController {
      * @return 操作结果
      */
     @PostMapping("/{pluginId}/disable")
+    @RequirePermission("plugins.manage")
+    @Operation(summary = "禁用插件")
     public Result disable(@PathVariable("pluginId") String pluginId) {
-        adminFacade.plugins().disable(pluginId);
+        pluginService.disable(pluginId);
         return Result.success();
     }
 
@@ -111,8 +127,10 @@ public class PluginManageController {
      * @return 操作结果
      */
     @DeleteMapping("/{pluginId}")
+    @RequirePermission("plugins.manage")
+    @Operation(summary = "卸载插件")
     public Result unload(@PathVariable("pluginId") String pluginId) {
-        adminFacade.plugins().unload(pluginId);
+        pluginService.unload(pluginId);
         return Result.success();
     }
 }

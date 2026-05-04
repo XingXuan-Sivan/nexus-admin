@@ -1,24 +1,24 @@
 package com.nexusadmin.app.config;
 
 import com.nexusadmin.app.config.properties.PluginProperties;
+import com.nexusadmin.core.CoreConfig;
 import com.nexusadmin.core.DefaultPluginManager;
 import com.nexusadmin.core.PluginManager;
-import com.nexusadmin.core.event.EventBus;
-import com.nexusadmin.core.extension.ExtensionRegistry;
-import com.nexusadmin.core.plugin.PluginRegistry;
+import com.nexusadmin.core.context.PlatformServices;
+import com.nexusadmin.core.facade.ConfigFacade;
+import com.nexusadmin.core.facade.EventBusFacade;
+import com.nexusadmin.core.facade.ExtensionFacade;
+import com.nexusadmin.core.facade.PluginFacade;
 import com.nexusadmin.core.plugin.RuntimeMode;
 import com.nexusadmin.core.plugin.discovery.PluginDescriptorFinder;
 import com.nexusadmin.core.plugin.discovery.PluginDescriptorParser;
 import com.nexusadmin.core.plugin.discovery.PluginSource;
-import com.nexusadmin.core.plugin.discovery.finder.DevDirectoryFinder;
-import com.nexusadmin.core.plugin.discovery.finder.JarFinder;
-import com.nexusadmin.core.plugin.discovery.finder.PackedDirectoryFinder;
-import com.nexusadmin.core.plugin.discovery.parser.JsonPluginDescriptorParser;
-import com.nexusadmin.core.plugin.discovery.source.ClasspathPluginSource;
-import com.nexusadmin.core.plugin.discovery.source.LocalDirectorySource;
-import com.nexusadmin.core.plugin.loader.PluginLoader;
-import com.nexusadmin.core.plugin.resolve.DependenceManager;
-import com.nexusadmin.core.plugin.resolve.VersionManager;
+import com.nexusadmin.core.plugin.discovery.impl.DevDirectoryFinder;
+import com.nexusadmin.core.plugin.discovery.impl.JarFinder;
+import com.nexusadmin.core.plugin.discovery.impl.PackedDirectoryFinder;
+import com.nexusadmin.core.plugin.discovery.impl.JsonPluginDescriptorParser;
+import com.nexusadmin.core.plugin.discovery.impl.ClasspathPluginSource;
+import com.nexusadmin.core.plugin.discovery.impl.LocalDirectorySource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -49,6 +49,20 @@ public class BootstrapConfig {
     @Bean
     public RuntimeMode runtimeMode(PluginProperties properties) {
         return properties.getRuntimeMode();
+    }
+
+    /**
+     * 核心运行时配置。
+     *
+     * @param properties 插件配置属性
+     * @return CoreConfig 实例
+     */
+    @Bean
+    public CoreConfig coreConfig(PluginProperties properties) {
+        return CoreConfig.of(
+                properties.getRuntimeMode(),
+                Paths.get(properties.getDataPath())
+        );
     }
 
     /**
@@ -100,64 +114,44 @@ public class BootstrapConfig {
 
     /**
      * 配置插件管理器。
+     * <p>通过 4 个门面聚合底层组件，DefaultPluginManager 仅负责生命周期编排。</p>
      *
-     * @param pluginRegistry    插件注册中心
-     * @param extensionRegistry 扩展注册中心
-     * @param eventBus          事件总线
-     * @param runtimeMode       运行模式
-     * @param properties        插件配置属性
-     * @param sources           插件源列表
-     * @param finders           描述文件查找器列表
-     * @param parsers           描述文件解析器列表
-     * @param versionManager    版本管理器
-     * @param dependenceManager 依赖管理器
-     * @param pluginLoader      插件加载器
+     * @param coreConfig       核心运行时配置
+     * @param pluginFacade     插件组件门面
+     * @param extensionFacade  扩展注册中心门面
+     * @param configFacade     配置管理门面
+     * @param eventBusFacade   事件总线门面
      * @return PluginManager 实例
      */
     @Bean
-    public PluginManager pluginManager(
-            PluginRegistry pluginRegistry,
-            ExtensionRegistry extensionRegistry,
-            EventBus eventBus,
-            RuntimeMode runtimeMode,
-            PluginProperties properties,
-            List<PluginSource> sources,
-            List<PluginDescriptorFinder> finders,
-            List<PluginDescriptorParser> parsers,
-            VersionManager versionManager,
-            DependenceManager dependenceManager,
-            PluginLoader pluginLoader) {
-
+    public PluginManager pluginManager(CoreConfig coreConfig,
+                                       PluginFacade pluginFacade,
+                                       ExtensionFacade extensionFacade,
+                                       ConfigFacade configFacade,
+                                       EventBusFacade eventBusFacade) {
         return new DefaultPluginManager(
-                pluginRegistry,
-                extensionRegistry,
-                eventBus,
-                runtimeMode,
-                Paths.get(properties.getDataPath()),
-                sources,
-                finders,
-                parsers,
-                versionManager,
-                dependenceManager,
-                pluginLoader
+                coreConfig,
+                pluginFacade,
+                extensionFacade,
+                configFacade,
+                eventBusFacade
         );
     }
 
-    // ==================== 配置管理器初始化 ====================
+    // ==================== 平台服务注册中心 ====================
 
     /**
-     * 配置管理器。
-     * <p>
-     * 从 DefaultPluginManager 中获取配置管理器实例。
+     * 平台服务注册中心。
+     * <p>从 DefaultPluginManager 中提取，供外部组件注册服务。</p>
      *
      * @param pluginManager 插件管理器
-     * @return ConfigManager 实例，如果不可用则返回 null
+     * @return PlatformServices 实例
      */
     @Bean
-    public com.nexusadmin.core.config.ConfigManager configManager(PluginManager pluginManager) {
+    public PlatformServices platformServices(PluginManager pluginManager) {
         if (pluginManager instanceof DefaultPluginManager dpm) {
-            return dpm.configManager();
+            return dpm.platformServices();
         }
-        return null;
+        return new PlatformServices();
     }
 }

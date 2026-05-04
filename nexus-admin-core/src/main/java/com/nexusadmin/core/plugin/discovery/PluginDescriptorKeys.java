@@ -59,6 +59,32 @@ public final class PluginDescriptorKeys {
     public static final String KEY_REQUIRES = "requires";
 
     /**
+     * 可选字段：插件贡献声明。
+     * <p>包含 menus、routes、mountPoints、permissions 四个子字段。</p>
+     */
+    public static final String KEY_CONTRIBUTES = "contributes";
+
+    /**
+     * contributes 子字段：菜单贡献列表。
+     */
+    public static final String KEY_CONTRIBUTES_MENUS = "menus";
+
+    /**
+     * contributes 子字段：路由贡献列表。
+     */
+    public static final String KEY_CONTRIBUTES_ROUTES = "routes";
+
+    /**
+     * contributes 子字段：挂载点贡献列表。
+     */
+    public static final String KEY_CONTRIBUTES_MOUNT_POINTS = "mountPoints";
+
+    /**
+     * contributes 子字段：权限声明列表。
+     */
+    public static final String KEY_CONTRIBUTES_PERMISSIONS = "permissions";
+
+    /**
      * 标准字段集合，用于区分标准字段和元数据字段。
      */
     public static final String[] STANDARD_KEYS = {
@@ -70,7 +96,8 @@ public final class PluginDescriptorKeys {
             KEY_MAIN_CLASS,
             KEY_CORE_VERSION,
             KEY_DEPENDENCIES,
-            KEY_REQUIRES
+            KEY_REQUIRES,
+            KEY_CONTRIBUTES
     };
 
     /**

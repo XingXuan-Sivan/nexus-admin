@@ -152,7 +152,7 @@ public class PluginManageController {
 
     @GetMapping
     public List<PluginView> listAll() {
-        return pluginAdminFacade.listAll();
+        return pluginService.listAll();
     }
 }
 ```
@@ -236,26 +236,26 @@ public class MyPlugin extends AbstractPlugin implements WebControllerProvider {
 ```java
 public class MyPlugin extends AbstractPlugin implements WebControllerProvider {
 
-    private AdminFacade adminFacade;
+    private PluginService pluginService;
 
     @Override
     protected void initialize() throws Exception {
         // 初始化阶段可能无法获取依赖
-        adminFacade = service(AdminFacade.class).orElse(null);
+        pluginService = service(PluginService.class).orElse(null);
     }
 
     @Override
     public List<Object> getControllers() {
         // 延迟获取依赖
-        if (adminFacade == null) {
-            adminFacade = service(AdminFacade.class).orElse(null);
+        if (pluginService == null) {
+            pluginService = service(PluginService.class).orElse(null);
         }
         
-        if (adminFacade == null) {
+        if (pluginService == null) {
             return List.of();  // 依赖未就绪，返回空列表
         }
         
-        return List.of(new MyController(adminFacade));
+        return List.of(new MyController(pluginService));
     }
 }
 ```

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "defaultRole": {
+      "type": "string",
+      "title": "默认角色",
+      "description": "新用户注册时自动分配的默认角色",
+      "default": "viewer",
+      "enum": ["admin", "editor", "viewer"],
+      "x-ui-group": "基础配置"
+    },
+    "allowRegistration": {
+      "type": "boolean",
+      "title": "允许注册",
+      "description": "是否开放用户自主注册",
+      "default": true,
+      "x-ui-group": "基础配置"
+    },
+    "passwordMinLength": {
+      "type": "integer",
+      "title": "密码最小长度",
+      "description": "用户密码的最小字符数",
+      "default": 8,
+      "minimum": 6,
+      "maximum": 32,
+      "x-ui-group": "安全策略"
+    },
+    "passwordRequireUppercase": {
+      "type": "boolean",
+      "title": "密码需大写字母",
+      "description": "用户密码是否必须包含大写字母",
+      "default": true,
+      "x-ui-group": "安全策略"
+    },
+    "passwordRequireSpecialChar": {
+      "type": "boolean",
+      "title": "密码需特殊字符",
+      "description": "用户密码是否必须包含特殊字符",
+      "default": false,
+      "x-ui-group": "安全策略"
+    },
+    "sessionTimeout": {
+      "type": "integer",
+      "title": "会话超时时间",
+      "description": "用户会话超时时间（分钟）",
+      "default": 30,
+      "minimum": 5,
+      "maximum": 1440,
+      "x-ui-group": "安全策略"
+    },
+    "maxLoginAttempts": {
+      "type": "integer",
+      "title": "最大登录尝试次数",
+      "description": "连续登录失败达到此数值后锁定账户",
+      "default": 5,
+      "minimum": 3,
+      "maximum": 20,
+      "x-ui-group": "安全策略"
+    }
+  }
+}

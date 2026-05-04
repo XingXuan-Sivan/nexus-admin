@@ -8,7 +8,7 @@ import java.util.Optional;
 
 /**
  * 配置 Schema，描述插件的配置结构。
- * <p>对应从 META-INF/schema.yml 解析的配置定义。</p>
+ * <p>对应从 META-INF/schema.json 解析的配置定义。</p>
  */
 public final class ConfigSchema {
 

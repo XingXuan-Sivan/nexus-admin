@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /**
  * 配置属性定义，描述单个配置项的元数据。
- * <p>对应 schema.yml 中的 properties 项。</p>
+ * <p>对应配置 Schema 中的 properties 项。</p>
  */
 public final class ConfigProperty {
 
