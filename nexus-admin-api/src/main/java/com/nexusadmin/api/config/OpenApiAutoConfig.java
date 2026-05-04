@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Configuration;
  * <p>平台信息从配置中心动态获取，不硬编码。</p>
  */
 @Configuration
-public class OpenApiConfig {
+public class OpenApiAutoConfig {
 
     private static final String SECURITY_SCHEME_NAME = "BearerAuth";
 

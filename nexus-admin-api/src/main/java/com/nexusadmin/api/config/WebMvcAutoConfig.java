@@ -13,11 +13,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  *   <li>PermissionInterceptor — 权限检查拦截器，拦截 /admin/v1/** 路径</li>
  * </ul>
  *
- * <p>注意：权限相关的 Bean 定义已迁移至 {@link ApiAutoConfig}，
+ * <p>注意：权限相关的 Bean 定义已迁移至 {@link PermissionAutoConfig}，
  * 以避免 Spring 容器循环依赖。</p>
  */
 @Configuration
-public class WebMvcConfig implements WebMvcConfigurer {
+public class WebMvcAutoConfig implements WebMvcConfigurer {
 
     private final PermissionInterceptor permissionInterceptor;
 
@@ -26,7 +26,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
      *
      * @param permissionInterceptor 权限检查拦截器
      */
-    public WebMvcConfig(PermissionInterceptor permissionInterceptor) {
+    public WebMvcAutoConfig(PermissionInterceptor permissionInterceptor) {
         this.permissionInterceptor = permissionInterceptor;
     }
 
