@@ -67,4 +67,43 @@ public class BootstrapAuthProvider implements AuthProvider {
                 .message("用户名或密码错误")
                 .build();
     }
+
+    /**
+     * 验证引导 Token。
+     * <p>
+     * 与 {@link #login} 默认实现生成的 "token-{userId}" 格式 Token 配套，
+     * 提取 Token 中的用户标识并与配置中心的用户名比对。
+     *
+     * @param token   Bearer Token
+     * @param context 调用上下文
+     * @return 认证结果
+     */
+    @Override
+    public AuthResult validateToken(String token, InvocationContext context) {
+        if (token == null || !token.startsWith("token-")) {
+            return AuthResult.builder()
+                    .status(AuthStatus.FAILED)
+                    .message("Token 格式无效")
+                    .build();
+        }
+
+        String userId = token.substring("token-".length());
+        String username = configManager.get(SCOPE, KEY_USERNAME).orElse("admin");
+
+        if (username.equals(userId)) {
+            return AuthResult.builder()
+                    .status(AuthStatus.SUCCESS)
+                    .userId(userId)
+                    .message("Token 验证通过")
+                    .attribute("authType", "bootstrap")
+                    .attribute("role", "admin")
+                    .build();
+        }
+
+        log.warn("引导 Token 验证失败，Token 用户: {}", userId);
+        return AuthResult.builder()
+                .status(AuthStatus.FAILED)
+                .message("Token 无效")
+                .build();
+    }
 }

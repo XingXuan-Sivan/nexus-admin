@@ -8,10 +8,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 默认认证挑战处理器，返回标准 HTTP 401 响应。
+ * 默认认证挑战处理器，返回标准 HTTP 401 JSON 响应。
  * <p>
- * 适用于 API 客户端场景，返回 401 状态码、WWW-Authenticate 头和 JSON 错误消息。
- * 当引导认证被禁用（存在其他认证提供者）时使用此处理器。
+ * 适用于 API 客户端场景。不设置 WWW-Authenticate 响应头，
+ * 避免触发浏览器原生 Basic 认证弹窗。认证失败的详细原因通过 JSON 响应体返回。
  */
 public class DefaultAuthChallengeHandler implements AuthChallengeHandler {
 
@@ -19,7 +19,6 @@ public class DefaultAuthChallengeHandler implements AuthChallengeHandler {
     public void handleChallenge(HttpServletRequest request, HttpServletResponse response, String message)
             throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setHeader("WWW-Authenticate", "Basic realm=\"Admin Panel\"");
         response.setContentType("application/json;charset=UTF-8");
         String json = "{\"error\":\"" + escapeJson(message) + "\"}";
         response.getOutputStream().write(json.getBytes(StandardCharsets.UTF_8));

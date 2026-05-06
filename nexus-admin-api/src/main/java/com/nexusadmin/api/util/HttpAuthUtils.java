@@ -22,10 +22,10 @@ public final class HttpAuthUtils {
 
     private static final Logger log = LoggerFactory.getLogger(HttpAuthUtils.class);
 
-    private static final String AUTH_HEADER = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
-    private static final String BASIC_PREFIX = "Basic ";
-    private static final String SESSION_ATTR_USER = "authenticatedUser";
+    public static final String AUTH_HEADER = "Authorization";
+    public static final String BEARER_PREFIX = "Bearer ";
+    public static final String BASIC_PREFIX = "Basic ";
+    public static final String SESSION_ATTR_USER = "authenticatedUser";
 
     private HttpAuthUtils() {
         throw new UnsupportedOperationException("工具类禁止实例化");
