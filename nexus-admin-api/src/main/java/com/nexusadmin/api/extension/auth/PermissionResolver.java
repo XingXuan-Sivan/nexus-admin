@@ -1,4 +1,4 @@
-package com.nexusadmin.api.extension.permission;
+package com.nexusadmin.api.extension.auth;
 
 import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.api.domain.identity.Permission;

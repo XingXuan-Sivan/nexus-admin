@@ -24,9 +24,21 @@ springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
-    enabled: false  # 使用 Knife4j UI 替代
+    enabled: true
 
 knife4j:
   enable: true
   setting:
     language: zh_cn
+
+# 管理面板 Web 层配置
+panel:
+  web:
+    # 管理面板 API 基础路径（不含版本号），过滤器/拦截器基于此值决定拦截范围
+    base-path: /admin
+    # 公开端点路径列表（无需认证即可访问），支持 Ant 风格路径模式
+    public-endpoints:
+      - /admin/v1/auth/login
+      - /doc.html
+      - /webjars/**
+      - /v3/api-docs/**

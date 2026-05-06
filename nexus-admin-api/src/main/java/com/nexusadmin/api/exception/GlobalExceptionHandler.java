@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.nio.file.AccessDeniedException;
 import java.util.List;
@@ -329,6 +330,31 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problem);
+    }
+
+    // ==================== Spring Web 异常 ====================
+
+    /**
+     * 静态资源未找到异常。
+     *
+     * @param ex 资源未找到异常
+     * @return ProblemDetail 响应
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ProblemDetail> handleNoResourceFoundException(NoResourceFoundException ex) {
+        log.debug("静态资源未匹配: {}", ex.getMessage());
+
+        ProblemDetail problem = ProblemDetail.builder()
+                .type(TYPE_BASE + "resource/not-found")
+                .title("资源不存在")
+                .status(HttpStatus.NOT_FOUND.value())
+                .detail("请求的资源不存在")
+                .errorCode(StatusCodes.NOT_FOUND.code())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .contentType(MediaType.APPLICATION_PROBLEM_JSON)
                 .body(problem);
     }

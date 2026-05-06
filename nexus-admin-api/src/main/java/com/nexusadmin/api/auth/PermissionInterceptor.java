@@ -1,17 +1,16 @@
-package com.nexusadmin.api.interceptor;
+package com.nexusadmin.api.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nexusadmin.api.auth.RequirePermission;
 import com.nexusadmin.api.context.InvocationContext;
-import com.nexusadmin.api.extension.permission.PermissionResolver;
-import com.nexusadmin.api.extension.permission.PermissionResolver.PermissionCheck;
-import com.nexusadmin.api.extension.permission.PermissionResolver.PermissionDecision;
+import com.nexusadmin.api.extension.auth.PermissionResolver;
+import com.nexusadmin.api.extension.auth.PermissionResolver.PermissionCheck;
+import com.nexusadmin.api.extension.auth.PermissionResolver.PermissionDecision;
 import com.nexusadmin.api.domain.result.ProblemDetail;
 import com.nexusadmin.api.domain.result.StatusCodes;
+import com.nexusadmin.api.util.HttpAuthUtils;
 import com.nexusadmin.core.extension.ExtensionConsumer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -32,8 +31,6 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class PermissionInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(PermissionInterceptor.class);
-
-    private static final String SESSION_ATTR_USER = "authenticatedUser";
 
     private static final String TYPE_BASE = "https://nexusadmin.io/probs/";
 
@@ -70,7 +67,7 @@ public class PermissionInterceptor implements HandlerInterceptor {
         }
 
         // 获取当前认证用户
-        String userId = getAuthenticatedUser(request);
+        String userId = HttpAuthUtils.getSessionUser(request);
         if (userId == null) {
             log.warn("未认证用户尝试访问受保护端点: {}", request.getRequestURI());
             writeForbiddenResponse(response, "未认证，请先登录");
@@ -106,21 +103,6 @@ public class PermissionInterceptor implements HandlerInterceptor {
         }
 
         return true;
-    }
-
-    /**
-     * 从 Session 中获取已认证用户标识。
-     *
-     * @param request HTTP 请求
-     * @return 用户标识，未认证返回 null
-     */
-    private String getAuthenticatedUser(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session == null) {
-            return null;
-        }
-        Object user = session.getAttribute(SESSION_ATTR_USER);
-        return user instanceof String s ? s : null;
     }
 
     /**

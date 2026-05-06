@@ -12,6 +12,7 @@ import com.nexusadmin.api.domain.result.Result;
 import com.nexusadmin.api.domain.result.StatusCodes;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import com.nexusadmin.api.util.HttpAuthUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +72,7 @@ public class AuthController {
     @RequirePermission("*")
     @Operation(summary = "用户登出")
     public Result logout(HttpServletRequest httpRequest) {
-        String token = extractBearerToken(httpRequest);
+        String token = HttpAuthUtils.extractBearerToken(httpRequest);
         if (token != null) {
             authProvider.logout(token, buildContext());
         }
@@ -104,7 +105,7 @@ public class AuthController {
     @RequirePermission("*")
     @Operation(summary = "获取当前用户信息")
     public DataResult<CurrentUserInfo> me(HttpServletRequest httpRequest) {
-        String token = extractBearerToken(httpRequest);
+        String token = HttpAuthUtils.extractBearerToken(httpRequest);
         if (token == null) {
             return DataResult.of(StatusCodes.UNAUTHORIZED, (CurrentUserInfo) null);
         }
@@ -126,17 +127,4 @@ public class AuthController {
                 .build();
     }
 
-    /**
-     * 从请求中提取 Bearer Token。
-     *
-     * @param request HTTP 请求
-     * @return Bearer Token，不存在时返回 null
-     */
-    private String extractBearerToken(HttpServletRequest request) {
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return null;
-        }
-        return authHeader.substring(7).trim();
-    }
 }

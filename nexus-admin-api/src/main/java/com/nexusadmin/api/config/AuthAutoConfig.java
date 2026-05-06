@@ -1,12 +1,11 @@
 package com.nexusadmin.api.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nexusadmin.api.auth.*;
+import com.nexusadmin.api.config.properties.PanelWebProperties;
 import com.nexusadmin.api.extension.auth.AuthChallengeHandler;
-import com.nexusadmin.api.auth.AuthFilter;
-import com.nexusadmin.api.auth.BootstrapAuthChallengeHandler;
-import com.nexusadmin.api.auth.BootstrapAuthProvider;
-import com.nexusadmin.api.auth.CompositeAuthProvider;
-import com.nexusadmin.api.auth.DefaultAuthChallengeHandler;
 import com.nexusadmin.api.extension.auth.AuthProvider;
+import com.nexusadmin.api.extension.auth.PermissionResolver;
 import com.nexusadmin.core.config.ConfigManager;
 import com.nexusadmin.core.event.EventBus;
 import com.nexusadmin.core.extension.ExtensionConsumer;
@@ -47,22 +46,6 @@ public class AuthAutoConfig {
         BootstrapAuthProvider provider = new BootstrapAuthProvider(configManager);
         extensionRegistry.register(AuthProvider.class, provider, 25);
         return provider;
-    }
-
-    /**
-     * 引导认证挑战处理器。
-     * <p>
-     * 返回 HTML 登录页面，注册到扩展注册中心作为引导优先级实现。
-     *
-     * @param extensionRegistry 扩展注册中心
-     * @return BootstrapAuthChallengeHandler 实例
-     */
-    @Bean
-    @ConditionalOnMissingBean(BootstrapAuthChallengeHandler.class)
-    public BootstrapAuthChallengeHandler bootstrapAuthChallengeHandler(ExtensionRegistry extensionRegistry) {
-        BootstrapAuthChallengeHandler handler = new BootstrapAuthChallengeHandler();
-        extensionRegistry.register(AuthChallengeHandler.class, handler, 25);
-        return handler;
     }
 
     /**
@@ -133,23 +116,59 @@ public class AuthAutoConfig {
     /**
      * 管理面板认证过滤器。
      * <p>
-     * 拦截所有 /admin/v1/* 请求，支持 Bearer Token、Basic 认证、表单登录和 Session 认证。
-     * 动态从扩展注册中心解析认证挑战处理器。
+     * 拦截管理面板基路径（默认 /admin/*）下的所有请求，支持 Bearer Token、
+     * Basic 认证和 Session 认证。基路径不含版本号，新增 API 版本时无需修改
+     * 过滤器配置。动态从扩展注册中心解析认证挑战处理器。
      *
-     * @param authProvider             组合认证提供者
-     * @param challengeHandlerConsumer 认证挑战处理器扩展点消费者
+     * @param properties                管理面板 Web 配置属性
+     * @param authProvider              组合认证提供者
+     * @param challengeHandlerConsumer  认证挑战处理器扩展点消费者
      * @return 过滤器注册 Bean
      */
     @Bean
     @ConditionalOnMissingBean(name = "adminAuthFilter")
     public FilterRegistrationBean<AuthFilter> adminAuthFilter(
+            PanelWebProperties properties,
             CompositeAuthProvider authProvider,
             ExtensionConsumer<AuthChallengeHandler> challengeHandlerConsumer) {
         FilterRegistrationBean<AuthFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(new AuthFilter(authProvider, challengeHandlerConsumer));
-        registration.addUrlPatterns("/admin/v1/*");
+        registration.setFilter(new AuthFilter(properties, authProvider, challengeHandlerConsumer));
+        registration.addUrlPatterns(properties.getBasePath() + "/*");
         registration.setName("adminAuthFilter");
         registration.setOrder(1);
         return registration;
+    }
+
+    /**
+     * 权限解析器扩展点消费者。
+     * <p>提供缓存 + 事件驱动失效的动态解析能力，供 PermissionInterceptor 使用。</p>
+     * <p>使用 name 限定而非类型限定，以避免与其他 ExtensionConsumer 发生泛型擦除冲突。</p>
+     *
+     * @param extensionRegistry 扩展注册中心
+     * @param eventBus          事件总线
+     * @return ExtensionConsumer 实例
+     */
+    @Bean
+    @ConditionalOnMissingBean(name = "permissionResolverConsumer")
+    public ExtensionConsumer<PermissionResolver> permissionResolverConsumer(
+            ExtensionRegistry extensionRegistry,
+            EventBus eventBus) {
+        return new ExtensionConsumer<>(PermissionResolver.class, extensionRegistry, eventBus);
+    }
+
+    /**
+     * 权限检查拦截器。
+     * <p>基于 {@link com.nexusadmin.api.auth.RequirePermission} 注解对管理面板 API 进行权限校验。</p>
+     *
+     * @param resolverConsumer 权限解析器扩展点消费者
+     * @param objectMapper     JSON 序列化器
+     * @return PermissionInterceptor 实例
+     */
+    @Bean
+    @ConditionalOnMissingBean(PermissionInterceptor.class)
+    public PermissionInterceptor permissionInterceptor(
+            ExtensionConsumer<PermissionResolver> resolverConsumer,
+            ObjectMapper objectMapper) {
+        return new PermissionInterceptor(resolverConsumer, objectMapper);
     }
 }

@@ -27,10 +27,10 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- SpringDoc OpenAPI 依赖（用于 OpenAPI 3.0 规范注解与 API 文档生成） -->
+        <!-- Knife4j 依赖（提供 OpenAPI 3.0 规范注解与增强版 API 文档 UI） -->
         <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
         </dependency>
     </dependencies>
 </project>
