@@ -1,6 +1,7 @@
 package com.nexusadmin.api.service;
 
 import com.nexusadmin.api.domain.identity.Permission;
+import com.nexusadmin.api.exception.ExtensionNotImplementedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,7 +22,7 @@ public class PermissionService {
      * @return 权限视图列表，不为空
      */
     public List<Permission> list() {
-        throw new UnsupportedOperationException("权限查询由拓展点实现");
+        throw new ExtensionNotImplementedException("权限查询由拓展点实现");
     }
 
     /**
@@ -30,6 +31,6 @@ public class PermissionService {
      * @return 模块-权限映射，不为空
      */
     public Map<String, List<Permission>> tree() {
-        throw new UnsupportedOperationException("权限查询由拓展点实现");
+        throw new ExtensionNotImplementedException("权限查询由拓展点实现");
     }
 }

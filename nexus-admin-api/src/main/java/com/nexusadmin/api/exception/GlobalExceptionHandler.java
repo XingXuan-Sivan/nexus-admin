@@ -207,6 +207,29 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理功能未实现异常（骨架 Service 等待插件提供实现）。
+     *
+     * @param ex 功能未实现异常
+     * @return ProblemDetail 响应
+     */
+    @ExceptionHandler(ExtensionNotImplementedException.class)
+    public ResponseEntity<ProblemDetail> handleExtensionNotImplementedException(ExtensionNotImplementedException ex) {
+        log.warn("功能未实现，需安装插件: {}", ex.getMessage());
+
+        ProblemDetail problem = ProblemDetail.builder()
+                .type(TYPE_BASE + "system/not-implemented")
+                .title("功能未实现")
+                .status(HttpStatus.NOT_IMPLEMENTED.value())
+                .detail(ex.getMessage())
+                .errorCode(StatusCodes.SYSTEM_UNAVAILABLE.code())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problem);
+    }
+
+    /**
      * 处理插件通用异常。
      *
      * @param ex 插件通用异常

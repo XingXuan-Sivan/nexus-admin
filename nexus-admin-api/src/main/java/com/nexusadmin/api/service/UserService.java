@@ -2,6 +2,7 @@ package com.nexusadmin.api.service;
 
 import com.nexusadmin.api.domain.identity.User;
 import com.nexusadmin.api.domain.result.PageResult;
+import com.nexusadmin.api.exception.ExtensionNotImplementedException;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -23,7 +24,7 @@ public class UserService {
      * @return 分页用户视图
      */
     public PageResult<User> list(int page, int size) {
-        throw new UnsupportedOperationException("用户管理由拓展点实现");
+        throw new ExtensionNotImplementedException("用户管理由拓展点实现");
     }
 
     /**
@@ -33,7 +34,7 @@ public class UserService {
      * @return 用户视图，不存在则返回空
      */
     public Optional<User> get(String id) {
-        throw new UnsupportedOperationException("用户管理由拓展点实现");
+        throw new ExtensionNotImplementedException("用户管理由拓展点实现");
     }
 
     /**
@@ -43,7 +44,7 @@ public class UserService {
      * @return 创建后的用户视图
      */
     public User create(User user) {
-        throw new UnsupportedOperationException("用户管理由拓展点实现");
+        throw new ExtensionNotImplementedException("用户管理由拓展点实现");
     }
 
     /**
@@ -54,7 +55,7 @@ public class UserService {
      * @return 更新后的用户视图
      */
     public User update(String id, User user) {
-        throw new UnsupportedOperationException("用户管理由拓展点实现");
+        throw new ExtensionNotImplementedException("用户管理由拓展点实现");
     }
 
     /**
@@ -63,6 +64,6 @@ public class UserService {
      * @param id 用户唯一标识
      */
     public void delete(String id) {
-        throw new UnsupportedOperationException("用户管理由拓展点实现");
+        throw new ExtensionNotImplementedException("用户管理由拓展点实现");
     }
 }

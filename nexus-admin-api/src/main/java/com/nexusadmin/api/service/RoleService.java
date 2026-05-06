@@ -2,6 +2,7 @@ package com.nexusadmin.api.service;
 
 import com.nexusadmin.api.domain.identity.Role;
 import com.nexusadmin.api.domain.result.PageResult;
+import com.nexusadmin.api.exception.ExtensionNotImplementedException;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -23,7 +24,7 @@ public class RoleService {
      * @return 分页角色视图
      */
     public PageResult<Role> list(int page, int size) {
-        throw new UnsupportedOperationException("角色管理由拓展点实现");
+        throw new ExtensionNotImplementedException("角色管理由拓展点实现");
     }
 
     /**
@@ -33,7 +34,7 @@ public class RoleService {
      * @return 角色视图，不存在则返回空
      */
     public Optional<Role> get(String id) {
-        throw new UnsupportedOperationException("角色管理由拓展点实现");
+        throw new ExtensionNotImplementedException("角色管理由拓展点实现");
     }
 
     /**
@@ -43,7 +44,7 @@ public class RoleService {
      * @return 创建后的角色视图
      */
     public Role create(Role role) {
-        throw new UnsupportedOperationException("角色管理由拓展点实现");
+        throw new ExtensionNotImplementedException("角色管理由拓展点实现");
     }
 
     /**
@@ -54,7 +55,7 @@ public class RoleService {
      * @return 更新后的角色视图
      */
     public Role update(String id, Role role) {
-        throw new UnsupportedOperationException("角色管理由拓展点实现");
+        throw new ExtensionNotImplementedException("角色管理由拓展点实现");
     }
 
     /**
@@ -63,6 +64,6 @@ public class RoleService {
      * @param id 角色唯一标识
      */
     public void delete(String id) {
-        throw new UnsupportedOperationException("角色管理由拓展点实现");
+        throw new ExtensionNotImplementedException("角色管理由拓展点实现");
     }
 }
