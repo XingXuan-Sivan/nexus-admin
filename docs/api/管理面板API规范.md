@@ -23,7 +23,7 @@ Nexus Admin 的 API 按职责分为两个独立分区：
 | 分区 | 路径前缀 | 说明 | 实现层 |
 |------|----------|------|--------|
 | 管理面板 API | `/admin/v1/**` | 平台管理操作（插件管理、配置、系统状态、认证等） | nexus-admin-api 内建 Controller |
-| 插件业务 API | `/api/{pluginId}/**` | 各插件暴露的业务端点 | 插件自身实现 |
+| 插件业务 API | `/plugins/{pluginId}/**` | 各插件暴露的业务端点 | 插件自身实现 |
 
 - **管理面板 API**：由平台统一管控，经 Service 层调用 core 门面（`PluginFacade`、`ConfigFacade` 等）后暴露。
 - **插件业务 API**：由插件通过 `WebControllerProvider` 或 `@EnableWebEndpoints` 动态注册，平台负责生命周期绑定。
@@ -1378,14 +1378,14 @@ Authorization: Bearer {accessToken}
 
 ### 6.1 插件 API 统一前缀
 
-所有插件暴露的业务 API 统一使用前缀 `/api/{pluginId}/**`，与平台管理 API（`/admin/v1/**`）隔离。
+所有插件暴露的业务 API 统一使用前缀 `/plugins/{pluginId}/**`，与平台管理 API（`/admin/v1/**`）隔离。
 
 **示例**：
 
 | 插件 | API 前缀 | 示例端点 |
 |------|----------|----------|
-| demo-plugin | `/api/demo-plugin/` | `/api/demo-plugin/hello` |
-| system-user-plugin | `/api/system-user-plugin/` | `/api/system-user-plugin/users` |
+| demo-plugin | `/plugins/demo-plugin/` | `/plugins/demo-plugin/hello` |
+| system-user-plugin | `/plugins/system-user-plugin/` | `/plugins/system-user-plugin/users` |
 
 ### 6.2 插件 Controller 开发规范
 
@@ -1393,7 +1393,7 @@ Authorization: Bearer {accessToken}
 
 ```java
 @RestController
-@RequestMapping("/api/demo-plugin")
+@RequestMapping("/plugins/demo-plugin")
 public class DemoController {
 
     @GetMapping("/hello")
@@ -1405,7 +1405,7 @@ public class DemoController {
 
 **规范要求**：
 
-- `@RequestMapping` 路径必须以 `/api/{pluginId}` 开头
+- `@RequestMapping` 路径必须以 `/plugins/{pluginId}` 开头
 - 返回值必须使用平台统一的 `Result` / `DataResult` 包装
 - 插件 API 不受平台 `AuthFilter` 拦截，需自行处理认证鉴权（如需要）
 
@@ -1444,9 +1444,9 @@ public class DemoPlugin extends AbstractPlugin {
 
 | 规则 | 说明 | 示例 |
 |------|------|------|
-| 路径前缀 | 必须为 `/api/{pluginId}/` | `/api/demo-plugin/` |
-| 资源命名 | 使用小写 kebab-case | `/api/demo-plugin/user-logs` |
-| 版本管理 | 如需版本化，在插件前缀后追加版本 | `/api/demo-plugin/v1/logs` |
+| 路径前缀 | 必须为 `/plugins/{pluginId}/` | `/plugins/demo-plugin/` |
+| 资源命名 | 使用小写 kebab-case | `/plugins/demo-plugin/user-logs` |
+| 版本管理 | 如需版本化，在插件前缀后追加版本 | `/plugins/demo-plugin/v1/logs` |
 | 操作语义 | 遵循 RESTful 动词 | GET 查询、POST 创建、PUT 更新、DELETE 删除 |
 
 ### 6.5 响应格式要求

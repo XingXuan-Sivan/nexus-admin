@@ -137,7 +137,7 @@ public class MyController {
 
 | 类型 | 路径前缀 | 示例 |
 |------|----------|------|
-| 普通插件 API | `/api/**` | `/api/my-plugin/api/hello` |
+| 普通插件 API | `/plugins/{pluginId}/**` | `/plugins/my-plugin/hello` |
 | 管理面板 API | `/admin/**` | `/admin/plugins` |
 
 ### 3.2 使用 @AdminApi 注解
@@ -172,7 +172,7 @@ public class OrderController {
 }
 ```
 
-**实际访问路径**：`/api/orders/list`
+**实际访问路径**：`/plugins/order-plugin/orders/list`
 
 ------
 
@@ -332,10 +332,10 @@ public class DemoController {
 插件启动后，可通过以下路径访问：
 
 ```
-GET    /api/demo/hello
-GET    /api/demo/users
-POST   /api/demo/users
-GET    /api/demo/users/{id}
+GET    /plugins/demo-plugin/hello
+GET    /plugins/demo-plugin/users
+POST   /plugins/demo-plugin/users
+GET    /plugins/demo-plugin/users/{id}
 ```
 
 ------

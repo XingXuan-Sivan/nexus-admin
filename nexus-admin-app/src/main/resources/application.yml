@@ -25,6 +25,9 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     enabled: true
+  cache:
+    # 禁用 API 文档缓存
+    disabled: true
 
 knife4j:
   enable: true

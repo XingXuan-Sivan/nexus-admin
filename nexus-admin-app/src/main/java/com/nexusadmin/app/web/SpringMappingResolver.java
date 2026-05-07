@@ -22,7 +22,7 @@ public class SpringMappingResolver implements MappingResolver {
 
     private static final Logger log = LoggerFactory.getLogger(SpringMappingResolver.class);
 
-    private static final String PLUGIN_PATH_PREFIX = "/api";
+    private static final String PLUGIN_PATH_PREFIX = "/plugins/{pluginId}";
     private static final String ADMIN_PATH_PREFIX = "/admin";
 
     @Override

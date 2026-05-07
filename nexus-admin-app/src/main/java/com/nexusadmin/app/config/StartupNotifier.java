@@ -7,6 +7,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import java.net.InetAddress;
@@ -21,17 +22,21 @@ public class StartupNotifier implements ApplicationRunner {
 
     private final ConfigManager configManager;
     private final ApplicationContext applicationContext;
+    private final Environment environment;
 
     /**
      * 构造启动完成通知器。
      *
      * @param configManager      配置管理器
      * @param applicationContext Spring 应用上下文
+     * @param environment        环境配置
      */
     public StartupNotifier(ConfigManager configManager,
-                           ApplicationContext applicationContext) {
+                           ApplicationContext applicationContext,
+                           Environment environment) {
         this.configManager = configManager;
         this.applicationContext = applicationContext;
+        this.environment = environment;
     }
 
     /**
@@ -43,22 +48,28 @@ public class StartupNotifier implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         try {
             String host = InetAddress.getLocalHost().getHostAddress();
-            String port = applicationContext.getEnvironment().getProperty("server.port", "8080");
-            String contextPath = applicationContext.getEnvironment().getProperty("server.servlet.context-path", "");
+            String port = environment.getProperty("server.port", "8080");
+            String contextPath = environment.getProperty("server.servlet.context-path", "");
 
             String name = configManager.get("platform", "infoName").orElse("Nexus Admin");
             String version = configManager.get("platform", "infoVersion").orElse("0.1.0-SNAPSHOT");
             String description = configManager.get("platform", "infoDescription").orElse("插件化系统拓展平台");
 
             log.info("");
-            log.info("===============================================");
+            log.info("===================================================");
             log.info("  {} 启动成功！", name);
             log.info("  版本：{}", version);
             log.info("  描述：{}", description);
-            log.info("-----------------------------------------------");
+            log.info("---------------------------------------------------");
             log.info("  本地访问地址：http://localhost:{}{}", port, contextPath);
             log.info("  外部访问地址：http://{}:{}{}", host, port, contextPath);
-            log.info("===============================================");
+
+            // Knife4j 文档地址（仅在启用时显示）
+            boolean knife4jEnabled = environment.getProperty("knife4j.enable", Boolean.class, false);
+            if (knife4jEnabled) {
+                log.info("  API文档地址：http://localhost:{}/doc.html", port);
+            }
+            log.info("===================================================");
             log.info("");
         } catch (Exception e) {
             log.warn("获取访问地址失败", e);

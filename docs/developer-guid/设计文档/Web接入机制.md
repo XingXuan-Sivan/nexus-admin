@@ -513,7 +513,7 @@ public class InMemoryPluginWebRegistry implements PluginWebRegistry {
 
 | 类型 | 路径前缀 | 示例 |
 |------|----------|------|
-| 普通插件 API | `/api/**` | `/api/demo/users` |
+| 普通插件 API | `/plugins/{pluginId}/**` | `/plugins/demo/users` |
 | 管理面板 API | `/admin/**` | `/admin/plugins` |
 
 > `SpringMappingResolver.ADMIN_PATH_PREFIX = "/admin"` 与 `PanelWebProperties.basePath` 默认值一致。认证过滤器（`AuthFilter`）和权限拦截器（`PermissionInterceptor`）均基于 `PanelWebProperties.basePath` 决定拦截范围。

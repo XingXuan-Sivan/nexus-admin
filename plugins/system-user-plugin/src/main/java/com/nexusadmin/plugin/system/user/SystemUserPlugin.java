@@ -1,10 +1,12 @@
 package com.nexusadmin.plugin.system.user;
 
+import com.nexusadmin.api.extension.web.EnableWebEndpoints;
 import com.nexusadmin.core.AbstractPlugin;
 
 /**
  * 系统用户插件入口，负责在插件启动与停止时完成 SPI 注册与资源管理。
  */
+@EnableWebEndpoints
 public class SystemUserPlugin extends AbstractPlugin {
 
     @Override

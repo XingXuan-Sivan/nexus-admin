@@ -3,7 +3,9 @@ package com.nexusadmin.plugin.system.user.controller;
 import com.nexusadmin.api.domain.identity.User;
 import com.nexusadmin.api.domain.result.DataResult;
 import com.nexusadmin.plugin.system.user.service.UserService;
+import com.nexusadmin.plugin.system.user.service.impl.UserServiceImpl;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,12 +21,10 @@ public class UserController {
     private final UserService userService;
 
     /**
-     * 构造用户控制器。
-     *
-     * @param userService 用户服务
+     * 无参构造器，用于平台自动扫描实例化时创建默认服务实现。
      */
-    public UserController(UserService userService) {
-        this.userService = userService;
+    public UserController() {
+        this.userService = new UserServiceImpl();
     }
 
     /**
@@ -52,6 +52,7 @@ public class UserController {
      *
      * @param user 用户信息
      */
+    @PostMapping("/add")
     public void createUser(User user) {
         userService.createUser(user);
     }
