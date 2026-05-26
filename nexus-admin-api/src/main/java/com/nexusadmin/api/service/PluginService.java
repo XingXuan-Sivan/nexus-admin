@@ -4,13 +4,16 @@ import com.nexusadmin.api.domain.view.PluginDetailView;
 import com.nexusadmin.api.domain.view.PluginStateView;
 import com.nexusadmin.api.domain.view.PluginView;
 import com.nexusadmin.api.exception.PluginOperationException;
+import com.nexusadmin.api.service.IPluginStateStore.PluginStateRecord;
 import com.nexusadmin.core.PluginManager;
 import com.nexusadmin.core.PluginState;
 import com.nexusadmin.core.plugin.loader.PluginWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,7 +23,8 @@ import java.util.stream.Collectors;
 /**
  * 插件管理服务。
  *
- * <p>提供插件生命周期的控制与查询能力，包括状态枚举转换、视图映射、生命周期操作的异常翻译。</p>
+ * <p>提供插件生命周期的控制与查询能力，包括状态枚举转换、视图映射、生命周期操作的异常翻译。
+ * 集成 {@link IPluginStateStore} 实现跨重启的状态持久化。</p>
  * <p>支持通过声明同类型 Bean 覆盖，便于插件提供定制实现。</p>
  */
 @Service
@@ -30,17 +34,21 @@ public class PluginService {
 
     private final PluginManager pluginManager;
     private final com.nexusadmin.core.facade.PluginFacade pluginFacade;
+    private final IPluginStateStore stateStore;
 
     /**
      * 构造插件管理服务。
      *
      * @param pluginManager 插件管理器
      * @param pluginFacade  核心插件组件门面
+     * @param stateStore    插件状态持久化存储（可选）
      */
     public PluginService(PluginManager pluginManager,
-                         com.nexusadmin.core.facade.PluginFacade pluginFacade) {
+                         com.nexusadmin.core.facade.PluginFacade pluginFacade,
+                         @Nullable IPluginStateStore stateStore) {
         this.pluginManager = pluginManager;
         this.pluginFacade = pluginFacade;
+        this.stateStore = stateStore;
     }
 
     /**
@@ -128,6 +136,7 @@ public class PluginService {
     public void enable(String pluginId) {
         try {
             pluginManager.enable(pluginId);
+            persistState(pluginId, true, null);
         } catch (Exception e) {
             throw new PluginOperationException(
                     pluginId,
@@ -147,6 +156,7 @@ public class PluginService {
     public void disable(String pluginId) {
         try {
             pluginManager.disable(pluginId);
+            persistState(pluginId, false, null);
         } catch (Exception e) {
             throw new PluginOperationException(
                     pluginId,
@@ -274,5 +284,26 @@ public class PluginService {
             case FAILED -> PluginState.FAILED;
             default -> PluginState.DISCOVERED;
         };
+    }
+
+    /**
+     * 持久化插件状态变更。
+     *
+     * @param pluginId 插件标识
+     * @param enabled  是否启用
+     * @param reason   禁用原因（启用时为 null）
+     */
+    private void persistState(String pluginId, boolean enabled, String reason) {
+        if (stateStore == null) {
+            return;
+        }
+        try {
+            PluginStateRecord record = new PluginStateRecord(
+                    pluginId, enabled, reason, Instant.now(), null);
+            stateStore.saveState(record);
+            log.debug("已持久化插件状态: pluginId={}, enabled={}", pluginId, enabled);
+        } catch (Exception e) {
+            log.warn("插件状态持久化失败: pluginId={}", pluginId, e);
+        }
     }
 }

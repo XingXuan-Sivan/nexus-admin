@@ -17,7 +17,7 @@ import java.lang.annotation.Target;
  * &#064;RestController
  * &#064;AdminApi
  * &#064;RequestMapping("/plugins")
- * public class PluginManageController {
+ * public class PluginController {
  *     // 实际访问路径: /admin/plugins
  * }
  * </pre>

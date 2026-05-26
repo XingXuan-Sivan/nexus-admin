@@ -1,36 +1,33 @@
 package com.nexusadmin.api.service;
 
 import com.nexusadmin.api.domain.identity.Permission;
-import com.nexusadmin.api.exception.ExtensionNotImplementedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
- * 权限查询服务（骨架实现）。
+ * 权限查询服务，委托 {@link IdentityService} 实现。
  *
- * <p>提供权限列表与权限树的查询能力，当前为骨架实现，实际功能由拓展点驱动。</p>
- * <p>支持通过声明同类型 Bean 覆盖，插件可提供完整的权限查询实现。</p>
+ * <p>作为权限实体的 Service 适配层，将权限相关的查询请求转发到统一身份管理接口。
+ * 支持通过声明同类型 Bean 覆盖。</p>
  */
 @Service
 public class PermissionService {
 
-    /**
-     * 获取权限列表。
-     *
-     * @return 权限视图列表，不为空
-     */
-    public List<Permission> list() {
-        throw new ExtensionNotImplementedException("权限查询由拓展点实现");
+    private final IdentityService identityService;
+
+    public PermissionService(IdentityService identityService) {
+        this.identityService = identityService;
     }
 
-    /**
-     * 获取按模块分组的权限树。
-     *
-     * @return 模块-权限映射，不为空
-     */
+    public List<Permission> list() {
+        return identityService.listPermissions();
+    }
+
     public Map<String, List<Permission>> tree() {
-        throw new ExtensionNotImplementedException("权限查询由拓展点实现");
+        return identityService.listPermissions().stream()
+                .collect(Collectors.groupingBy(Permission::resource));
     }
 }

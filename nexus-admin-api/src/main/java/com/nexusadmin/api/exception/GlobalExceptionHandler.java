@@ -17,6 +17,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -358,6 +359,29 @@ public class GlobalExceptionHandler {
     }
 
     // ==================== Spring Web 异常 ====================
+
+    /**
+     * 不支持的媒体类型异常。
+     *
+     * @param ex 媒体类型不支持异常
+     * @return ProblemDetail 响应
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ProblemDetail> handleHttpMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
+        log.warn("不支持的 Content-Type: {}", ex.getContentType());
+
+        ProblemDetail problem = ProblemDetail.builder()
+                .type(TYPE_BASE + "request/unsupported-media-type")
+                .title("不支持的请求类型")
+                .status(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value())
+                .detail("Content-Type '" + ex.getContentType() + "' 不被支持，支持的格式: " + ex.getSupportedMediaTypes())
+                .errorCode(StatusCodes.BAD_REQUEST.code())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(problem);
+    }
 
     /**
      * 静态资源未找到异常。

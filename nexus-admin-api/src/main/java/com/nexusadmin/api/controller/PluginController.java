@@ -26,7 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin/v1/plugins")
 @Tag(name = "插件管理")
-public class PluginManageController {
+public class PluginController {
 
     private final PluginService pluginService;
 
@@ -35,7 +35,7 @@ public class PluginManageController {
      *
      * @param pluginService 插件管理服务
      */
-    public PluginManageController(PluginService pluginService) {
+    public PluginController(PluginService pluginService) {
         this.pluginService = pluginService;
     }
 
