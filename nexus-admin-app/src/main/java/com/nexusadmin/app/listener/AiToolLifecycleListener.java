@@ -1,9 +1,9 @@
 package com.nexusadmin.app.listener;
 
-import com.nexusadmin.api.extension.ai.AiTool;
-import com.nexusadmin.api.extension.ai.AiToolRegistry;
-import com.nexusadmin.api.extension.ai.EnableAiTools;
-import com.nexusadmin.api.extension.ai.impl.AiToolAdapter;
+import com.nexusadmin.api.ai.AiTool;
+import com.nexusadmin.api.ai.AiToolRegistry;
+import com.nexusadmin.api.ai.EnableAiTools;
+import com.nexusadmin.api.ai.impl.AiToolAdapter;
 import com.nexusadmin.core.PluginState;
 import com.nexusadmin.core.event.EventBus;
 import com.nexusadmin.core.event.EventScopeMatcher;

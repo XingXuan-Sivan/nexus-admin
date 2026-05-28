@@ -1,7 +1,7 @@
 package com.nexusadmin.api.controller;
 
 import com.nexusadmin.api.auth.RequirePermission;
-import com.nexusadmin.api.extension.ui.UIContributionRegistry;
+import com.nexusadmin.api.ui.UIContributionRegistry;
 import com.nexusadmin.api.domain.result.DataResult;
 import com.nexusadmin.core.plugin.discovery.PluginContributes;
 import io.swagger.v3.oas.annotations.Operation;

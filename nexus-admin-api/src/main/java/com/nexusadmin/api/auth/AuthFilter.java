@@ -1,11 +1,11 @@
 package com.nexusadmin.api.auth;
 
+import com.nexusadmin.api.auth.impl.DefaultAuthChallengeHandler;
 import com.nexusadmin.api.config.properties.PanelWebProperties;
 import com.nexusadmin.api.context.InvocationContext;
-import com.nexusadmin.api.extension.auth.AuthChallengeHandler;
-import com.nexusadmin.api.extension.auth.AuthProvider.AuthRequest;
-import com.nexusadmin.api.extension.auth.AuthProvider.AuthResult;
-import com.nexusadmin.api.extension.auth.AuthProvider.AuthStatus;
+import com.nexusadmin.api.auth.AuthProvider.AuthRequest;
+import com.nexusadmin.api.auth.AuthProvider.AuthResult;
+import com.nexusadmin.api.auth.AuthProvider.AuthStatus;
 import com.nexusadmin.api.util.HttpAuthUtils;
 import com.nexusadmin.core.extension.ExtensionConsumer;
 import jakarta.servlet.Filter;

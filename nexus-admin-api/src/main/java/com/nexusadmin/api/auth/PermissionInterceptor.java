@@ -2,9 +2,8 @@ package com.nexusadmin.api.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nexusadmin.api.context.InvocationContext;
-import com.nexusadmin.api.extension.auth.PermissionResolver;
-import com.nexusadmin.api.extension.auth.PermissionResolver.PermissionCheck;
-import com.nexusadmin.api.extension.auth.PermissionResolver.PermissionDecision;
+import com.nexusadmin.api.auth.PermissionResolver.PermissionCheck;
+import com.nexusadmin.api.auth.PermissionResolver.PermissionDecision;
 import com.nexusadmin.api.domain.result.ProblemDetail;
 import com.nexusadmin.api.domain.result.StatusCodes;
 import com.nexusadmin.api.util.HttpAuthUtils;

@@ -1,6 +1,6 @@
 package com.nexusadmin.api.config;
 
-import com.nexusadmin.api.extension.web.PluginWebRegistry;
+import com.nexusadmin.api.web.PluginWebRegistry;
 import com.nexusadmin.api.util.HttpAuthUtils;
 import com.nexusadmin.core.PluginManager;
 import com.nexusadmin.core.PluginState;

@@ -1,9 +1,9 @@
 package com.nexusadmin.api.config;
 
-import com.nexusadmin.api.extension.ai.AiProvider;
-import com.nexusadmin.api.extension.ai.AiTool;
-import com.nexusadmin.api.extension.ai.AiToolRegistry;
-import com.nexusadmin.api.extension.ai.impl.DefaultAiToolRegistry;
+import com.nexusadmin.api.ai.AiProvider;
+import com.nexusadmin.api.ai.AiTool;
+import com.nexusadmin.api.ai.AiToolRegistry;
+import com.nexusadmin.api.ai.impl.DefaultAiToolRegistry;
 import com.nexusadmin.core.event.EventBus;
 import com.nexusadmin.core.extension.ExtensionConsumer;
 import com.nexusadmin.core.extension.ExtensionRegistry;

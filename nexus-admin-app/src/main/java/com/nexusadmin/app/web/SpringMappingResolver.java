@@ -1,7 +1,7 @@
 package com.nexusadmin.app.web;
 
-import com.nexusadmin.api.extension.web.AdminApi;
-import com.nexusadmin.api.extension.web.MappingResolver;
+import com.nexusadmin.api.web.AdminApi;
+import com.nexusadmin.api.web.MappingResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.AnnotatedElementUtils;

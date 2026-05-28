@@ -4,22 +4,18 @@ import com.nexusadmin.api.auth.RequirePermission;
 import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.api.domain.result.DataResult;
 import com.nexusadmin.api.domain.result.Result;
-import com.nexusadmin.api.extension.storage.StorageProvider;
-import com.nexusadmin.api.extension.storage.StorageProvider.StorageKey;
-import com.nexusadmin.api.extension.storage.StorageProvider.StorageObject;
+import com.nexusadmin.api.storage.StorageProvider;
+import com.nexusadmin.api.storage.StorageProvider.StorageKey;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Base64;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**

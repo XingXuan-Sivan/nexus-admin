@@ -1,8 +1,8 @@
 package com.nexusadmin.app.web;
 
-import com.nexusadmin.api.extension.web.EnableWebEndpoints;
-import com.nexusadmin.api.extension.web.WebControllerProvider;
-import com.nexusadmin.api.extension.web.WebEndpointExtension;
+import com.nexusadmin.api.web.EnableWebEndpoints;
+import com.nexusadmin.api.web.WebControllerProvider;
+import com.nexusadmin.api.web.WebEndpointExtension;
 import com.nexusadmin.core.extension.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,7 +1,7 @@
 package com.nexusadmin.api.config;
 
-import com.nexusadmin.api.auth.DefaultPermissionResolver;
-import com.nexusadmin.api.extension.auth.PermissionResolver;
+import com.nexusadmin.api.auth.impl.DefaultPermissionResolver;
+import com.nexusadmin.api.auth.PermissionResolver;
 import com.nexusadmin.api.service.IPluginStateStore;
 import com.nexusadmin.api.service.IdentityService;
 import com.nexusadmin.api.service.impl.InMemoryIdentityService;

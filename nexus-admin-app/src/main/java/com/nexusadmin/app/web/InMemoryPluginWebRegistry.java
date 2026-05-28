@@ -1,6 +1,6 @@
 package com.nexusadmin.app.web;
 
-import com.nexusadmin.api.extension.web.PluginWebRegistry;
+import com.nexusadmin.api.web.PluginWebRegistry;
 
 import java.util.Collections;
 import java.util.List;

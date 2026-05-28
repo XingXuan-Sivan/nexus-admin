@@ -2,10 +2,14 @@ package com.nexusadmin.api.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nexusadmin.api.auth.*;
+import com.nexusadmin.api.auth.impl.BootstrapAuthProvider;
+import com.nexusadmin.api.auth.CompositeAuthProvider;
+import com.nexusadmin.api.auth.impl.DefaultAuthChallengeHandler;
+import com.nexusadmin.api.auth.PermissionInterceptor;
 import com.nexusadmin.api.config.properties.PanelWebProperties;
-import com.nexusadmin.api.extension.auth.AuthChallengeHandler;
-import com.nexusadmin.api.extension.auth.AuthProvider;
-import com.nexusadmin.api.extension.auth.PermissionResolver;
+import com.nexusadmin.api.auth.AuthChallengeHandler;
+import com.nexusadmin.api.auth.AuthProvider;
+import com.nexusadmin.api.auth.PermissionResolver;
 import com.nexusadmin.core.config.ConfigManager;
 import com.nexusadmin.core.event.EventBus;
 import com.nexusadmin.core.extension.ExtensionConsumer;

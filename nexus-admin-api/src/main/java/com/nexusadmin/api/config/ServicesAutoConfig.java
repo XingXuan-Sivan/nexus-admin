@@ -1,9 +1,9 @@
 package com.nexusadmin.api.config;
 
-import com.nexusadmin.api.extension.cache.CacheProvider;
-import com.nexusadmin.api.extension.cache.InMemoryCacheProvider;
-import com.nexusadmin.api.extension.storage.LocalStorageProvider;
-import com.nexusadmin.api.extension.storage.StorageProvider;
+import com.nexusadmin.api.cache.CacheProvider;
+import com.nexusadmin.api.cache.InMemoryCacheProvider;
+import com.nexusadmin.api.storage.LocalStorageProvider;
+import com.nexusadmin.api.storage.StorageProvider;
 import com.nexusadmin.api.service.DepartmentService;
 import com.nexusadmin.api.service.DictionaryService;
 import com.nexusadmin.api.service.LogService;

@@ -1,8 +1,9 @@
 package com.nexusadmin.api.controller;
 
 import com.nexusadmin.api.auth.RequirePermission;
-import com.nexusadmin.api.extension.ai.AiTool;
-import com.nexusadmin.api.extension.ai.AiToolRegistry;
+import com.nexusadmin.api.ai.AiTool;
+import com.nexusadmin.api.ai.AiToolRegistry;
+import com.nexusadmin.api.ai.McpRemoteToolBridge;
 import com.alibaba.fastjson2.JSON;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,12 +13,12 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * MCP JSON-RPC 端点控制器。
@@ -25,9 +26,16 @@ import java.util.Map;
  * <p>手动实现 MCP 协议的 tools/list 和 tools/call 方法，
  * 兼容 LangChain4j 生态与标准 MCP 客户端。</p>
  *
- * <p>遵循 JSON-RPC 2.0 规范，所有 AiTool 自动暴露为 MCP Tool。</p>
+ * <p>遵循 JSON-RPC 2.0 规范，所有 AiTool 自动暴露为 MCP Tool。
+ * tools/list 支持可选的 mode 参数进行工具分类过滤：
+ * <ul>
+ *   <li>不传或 mode=all — 全部工具（本地 + 桥接）</li>
+ *   <li>mode=local — 仅平台自带工具</li>
+ *   <li>mode=bridged — 仅已桥接的远程 MCP 工具</li>
+ * </ul>
+ *
+ * <p>由 {@code McpAutoConfig} 显式装配，不再通过组件扫描自动创建。</p>
  */
-@RestController
 @RequestMapping("/admin/v1/mcp")
 @Tag(name = "MCP 端点")
 public class McpController {
@@ -35,9 +43,11 @@ public class McpController {
     private static final Logger log = LoggerFactory.getLogger(McpController.class);
 
     private final AiToolRegistry toolRegistry;
+    private final McpRemoteToolBridge bridge;
 
-    public McpController(AiToolRegistry toolRegistry) {
+    public McpController(AiToolRegistry toolRegistry, McpRemoteToolBridge bridge) {
         this.toolRegistry = toolRegistry;
+        this.bridge = bridge;
     }
 
     /**
@@ -60,7 +70,7 @@ public class McpController {
 
         try {
             Object result = switch (method) {
-                case "tools/list" -> handleToolsList();
+                case "tools/list" -> handleToolsList(params);
                 case "tools/call" -> handleToolsCall(params);
                 default -> throw new IllegalArgumentException("不支持的方法: " + method);
             };
@@ -84,12 +94,32 @@ public class McpController {
     }
 
     /**
-     * 列出所有可用工具。
+     * 列出可用工具，支持按模式分类过滤。
      *
+     * @param params 请求参数，可选 mode 字段（all/local/bridged）
      * @return tools/list 响应
      */
-    private Map<String, Object> handleToolsList() {
-        List<AiTool> tools = toolRegistry.listAll();
+    private Map<String, Object> handleToolsList(Map<String, Object> params) {
+        String mode = params != null ? String.valueOf(params.getOrDefault("mode", "all")) : "all";
+
+        List<AiTool> tools;
+        switch (mode) {
+            case "local" -> {
+                Set<String> bridgedNames = bridge.getAllBridgedToolNames();
+                tools = toolRegistry.listAll().stream()
+                        .filter(t -> !bridgedNames.contains(t.getName()))
+                        .toList();
+            }
+            case "bridged" -> {
+                Set<String> bridgedNames = bridge.getAllBridgedToolNames();
+                tools = bridgedNames.stream()
+                        .map(toolRegistry::get)
+                        .filter(t -> t != null)
+                        .toList();
+            }
+            default -> tools = toolRegistry.listAll();
+        }
+
         List<Map<String, Object>> result = new ArrayList<>();
         for (AiTool tool : tools) {
             Map<String, Object> entry = new LinkedHashMap<>();
@@ -107,7 +137,7 @@ public class McpController {
             }
             result.add(entry);
         }
-        log.debug("MCP tools/list 返回 {} 个工具", result.size());
+        log.debug("MCP tools/list mode={} 返回 {} 个工具", mode, result.size());
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("tools", result);
         return response;

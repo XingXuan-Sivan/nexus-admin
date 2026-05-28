@@ -1,6 +1,6 @@
 package com.nexusadmin.plugin.system.user;
 
-import com.nexusadmin.api.extension.web.EnableWebEndpoints;
+import com.nexusadmin.api.web.EnableWebEndpoints;
 import com.nexusadmin.core.AbstractPlugin;
 
 /**

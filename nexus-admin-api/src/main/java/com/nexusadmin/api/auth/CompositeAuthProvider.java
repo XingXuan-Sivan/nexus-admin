@@ -1,13 +1,13 @@
 package com.nexusadmin.api.auth;
 
+import com.nexusadmin.api.auth.impl.BootstrapAuthProvider;
 import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.api.domain.identity.CurrentUserInfo;
 import com.nexusadmin.api.domain.identity.LoginRequest;
 import com.nexusadmin.api.domain.identity.TokenResponse;
-import com.nexusadmin.api.extension.auth.AuthProvider;
-import com.nexusadmin.api.extension.auth.AuthProvider.AuthRequest;
-import com.nexusadmin.api.extension.auth.AuthProvider.AuthResult;
-import com.nexusadmin.api.extension.auth.AuthProvider.AuthStatus;
+import com.nexusadmin.api.auth.AuthProvider.AuthRequest;
+import com.nexusadmin.api.auth.AuthProvider.AuthResult;
+import com.nexusadmin.api.auth.AuthProvider.AuthStatus;
 import com.nexusadmin.core.extension.ExtensionConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

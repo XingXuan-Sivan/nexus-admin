@@ -1,12 +1,12 @@
 package com.nexusadmin.app.listener;
 
-import com.nexusadmin.api.extension.web.EnableWebEndpoints;
-import com.nexusadmin.api.extension.web.MappingResolver;
-import com.nexusadmin.api.extension.web.PluginWebRegistry;
-import com.nexusadmin.api.extension.web.WebControllerProvider;
-import com.nexusadmin.api.extension.web.WebEndpointExtension;
-import com.nexusadmin.api.extension.web.WebEndpointExtension.EndpointScanConfig;
-import com.nexusadmin.api.extension.web.WebEndpointRegistrar;
+import com.nexusadmin.api.web.EnableWebEndpoints;
+import com.nexusadmin.api.web.MappingResolver;
+import com.nexusadmin.api.web.PluginWebRegistry;
+import com.nexusadmin.api.web.WebControllerProvider;
+import com.nexusadmin.api.web.WebEndpointExtension;
+import com.nexusadmin.api.web.WebEndpointExtension.EndpointScanConfig;
+import com.nexusadmin.api.web.WebEndpointRegistrar;
 import com.nexusadmin.core.PluginState;
 import com.nexusadmin.core.event.EventBus;
 import com.nexusadmin.core.event.EventScopeMatcher;

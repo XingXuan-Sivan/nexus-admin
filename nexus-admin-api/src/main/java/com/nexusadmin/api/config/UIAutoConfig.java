@@ -1,8 +1,8 @@
 package com.nexusadmin.api.config;
 
 import com.nexusadmin.api.controller.PluginStaticResourceController;
-import com.nexusadmin.api.extension.ui.UIContributionRegistry;
-import com.nexusadmin.api.extension.ui.UIContributionRegistryImpl;
+import com.nexusadmin.api.ui.UIContributionRegistry;
+import com.nexusadmin.api.ui.DefaultUIContributionRegistry;
 import com.nexusadmin.core.PluginManager;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -32,7 +32,7 @@ public class UIAutoConfig {
     @Bean
     @ConditionalOnMissingBean(UIContributionRegistry.class)
     public UIContributionRegistry uiContributionRegistry(PluginManager pluginManager) {
-        return new UIContributionRegistryImpl(pluginManager);
+        return new DefaultUIContributionRegistry(pluginManager);
     }
 
     /**
