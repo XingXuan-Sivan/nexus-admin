@@ -59,6 +59,15 @@ public record LogEntry(String id,
     }
 
     /**
+     * 创建日志条目构建器。
+     *
+     * @return 构建器实例
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
      * 日志条目构建器。
      */
     public static final class Builder {

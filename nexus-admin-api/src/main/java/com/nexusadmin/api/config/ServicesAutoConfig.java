@@ -6,13 +6,11 @@ import com.nexusadmin.api.storage.LocalStorageProvider;
 import com.nexusadmin.api.storage.StorageProvider;
 import com.nexusadmin.api.service.DepartmentService;
 import com.nexusadmin.api.service.DictionaryService;
-import com.nexusadmin.api.service.LogService;
 import com.nexusadmin.api.service.PositionService;
 import com.nexusadmin.api.service.SystemHealthProvider;
 import com.nexusadmin.api.service.impl.DefaultSystemHealthProvider;
 import com.nexusadmin.api.service.impl.InMemoryDepartmentService;
 import com.nexusadmin.api.service.impl.InMemoryDictionaryService;
-import com.nexusadmin.api.service.impl.InMemoryLogService;
 import com.nexusadmin.api.service.impl.InMemoryPositionService;
 import com.nexusadmin.core.facade.PluginFacade;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -22,8 +20,10 @@ import org.springframework.context.annotation.Configuration;
 /**
  * 平台 Service 默认实现装配配置。
  *
- * <p>为 DictionaryService、DepartmentService、PositionService、LogService、
+ * <p>为 DictionaryService、DepartmentService、PositionService、
  * SystemHealthProvider、StorageProvider、CacheProvider 提供默认内存实现。</p>
+ *
+ * <p>LogService 由 {@link LogAutoConfig} 统一装配，不在此配置。</p>
  */
 @Configuration
 public class ServicesAutoConfig {
@@ -44,12 +44,6 @@ public class ServicesAutoConfig {
     @ConditionalOnMissingBean(PositionService.class)
     public PositionService positionService() {
         return new InMemoryPositionService();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(LogService.class)
-    public LogService logService() {
-        return new InMemoryLogService();
     }
 
     @Bean

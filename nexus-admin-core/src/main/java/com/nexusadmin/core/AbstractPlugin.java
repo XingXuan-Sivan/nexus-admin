@@ -9,6 +9,8 @@ import com.nexusadmin.core.context.PluginRuntime;
 import com.nexusadmin.core.context.PluginWorkspace;
 import com.nexusadmin.core.event.EventPublisher;
 import com.nexusadmin.core.extension.ExtensionRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
@@ -34,6 +36,9 @@ import java.util.Optional;
  */
 public abstract class AbstractPlugin implements Plugin {
 
+    /** SLF4J 日志记录器，子类可继承使用 */
+    protected final Logger log = LoggerFactory.getLogger(getClass());
+
     /**
      * 当前插件运行上下文。
      * <p>在生命周期回调时由平台注入，生命周期外访问将抛出异常。</p>
@@ -51,7 +56,9 @@ public abstract class AbstractPlugin implements Plugin {
     @Override
     public final void onInitialize(PluginContext context) throws Exception {
         this.context = context;
+        log.debug("插件 [{}] 正在初始化", pluginId());
         initialize();
+        log.debug("插件 [{}] 初始化完成", pluginId());
     }
 
     /**
@@ -65,7 +72,9 @@ public abstract class AbstractPlugin implements Plugin {
     @Override
     public final void onStart(PluginContext context) throws Exception {
         this.context = context;
+        log.info("插件 [{}] 正在启动", pluginId());
         start();
+        log.info("插件 [{}] 启动完成", pluginId());
     }
 
     /**
@@ -79,7 +88,9 @@ public abstract class AbstractPlugin implements Plugin {
     @Override
     public final void onStop(PluginContext context) throws Exception {
         this.context = context;
+        log.info("插件 [{}] 正在停止", pluginId());
         stop();
+        log.info("插件 [{}] 停止完成", pluginId());
     }
 
     /**
@@ -93,7 +104,9 @@ public abstract class AbstractPlugin implements Plugin {
     @Override
     public final void onUnload(PluginContext context) throws Exception {
         this.context = context;
+        log.debug("插件 [{}] 正在卸载", pluginId());
         unload();
+        log.debug("插件 [{}] 卸载完成", pluginId());
     }
 
     // ==================== 生命周期模板方法 ====================

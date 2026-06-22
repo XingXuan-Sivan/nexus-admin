@@ -12,6 +12,55 @@ AI 插件是提供 AI 模型或 AI 工具能力的插件。平台支持三种 AI
 | 工具提供插件 | 实现 `AiTool` 或使用 `@Tool` 注解，提供 AI 可调用的工具 | 提供插件管理、配置读写、日志查询等平台操作能力 |
 | 混合插件 | 同时提供模型和工具能力 | 完整的 AI 解决方案插件 |
 
+### 1.1 快速决策流程
+
+添加新 AI 功能时，按以下决策树选择正确的接入方式：
+
+```
+要添加什么 AI 功能？
+│
+├─ 接入新的 AI 模型（OpenAI / Ollama / 通义千问…）
+│   └─ ▶ 实现 AiProvider 扩展点
+│      ├─ 特点：平台抽象，插件化供给，运行时可替换
+│      ├─ 自动适配：ChatLanguageModel 桥接、LangChain4j 生态
+│      └─ 详见：§2 开发模型提供插件
+│
+├─ 给 AI 添加可调用的工具/函数
+│   ├─ 简单场景：方法签名简单，基础类型参数
+│   │   └─ ▶ 使用 @Tool 注解（推荐）
+│   │      ├─ 特点：零样板代码，平台自动扫描注册
+│   │      └─ 详见：§3.1 方式一
+│   │
+│   └─ 复杂场景：需要精细控制参数 Schema、异步执行、流式返回
+│       └─ ▶ 直接实现 AiTool 接口
+│          ├─ 特点：完全控制 getInputTypeSchema() / execute()
+│          └─ 详见：§3.2 方式二
+│
+├─ 复用外部 MCP 服务的工具（而非自己开发）
+│   └─ ▶ 通过管理 API 创建 MCP Client 连接
+│      ├─ 连接后自动桥接：远程工具 → AiToolRegistry → 平台 AI 可见
+│      ├─ 无需写代码，只需配置 URL
+│      └─ 详见：[使用 AI 能力 §5](使用AI能力.md)
+│
+├─ 在代码中使用 AI（对话 + 工具调用）
+│   ├─ 只需对话 → 注入 ChatLanguageModel 或 ExtensionConsumer<AiProvider>
+│   │   └─ 详见：[使用 AI 能力 §2](使用AI能力.md)
+│   │
+│   └─ 需要对话 + 自动工具调用 → 注入 AIToolProvider + AiServices
+│       └─ 详见：[使用 AI 能力 §3](使用AI能力.md)
+│
+└─ 覆盖平台默认 AI 组件行为
+    └─ ▶ 声明同名 Bean + @ConditionalOnMissingBean 自动覆盖
+       ├─ 可覆盖：McpRemoteToolBridge / McpClientRegistry / AIToolProvider …
+       └─ 详见：[AI 体系 §3](../developer-guid/设计文档/AI体系.md)
+```
+
+**核心原则**：所有新 AI 能力通过"插入而非修改"的方式接入——
+- 新增能力 → `AiTool` 接口 或 `AiProvider` 扩展点
+- 引入外部能力 → MCP Client 连接（自动桥接）
+- 覆盖默认行为 → `@ConditionalOnMissingBean`
+- 不得修改平台现有接口
+
 ------
 
 ## 2. 开发模型提供插件

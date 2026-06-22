@@ -18,9 +18,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.util.AntPathMatcher;
 
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * 管理面板认证过滤器。
@@ -80,63 +82,78 @@ public class AuthFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
-        String requestPath = httpRequest.getRequestURI();
+        String traceId = UUID.randomUUID().toString();
+        MDC.put("traceId", traceId);
+        MDC.put("channelId", "HTTP");
 
-        // 只拦截管理面板基路径（如 /admin/**），不感知版本号
-        if (!requestPath.startsWith(properties.getBasePath())) {
-            chain.doFilter(request, response);
-            return;
-        }
+        try {
+            String requestPath = httpRequest.getRequestURI();
 
-        // 公开端点放行（由 yml 配置，支持 Ant 风格模式）
-        if (isPublicEndpoint(httpRequest)) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        // 1. 检查 Session 中是否已认证
-        String sessionUser = HttpAuthUtils.getSessionUser(httpRequest);
-        if (sessionUser != null) {
-            log.debug("管理面板会话认证通过，用户: {}", sessionUser);
-            chain.doFilter(request, response);
-            return;
-        }
-
-        // 2. 尝试 Bearer Token 认证
-        String bearerToken = HttpAuthUtils.extractBearerToken(httpRequest);
-        if (bearerToken != null) {
-            AuthResult authResult = authProvider.validateToken(bearerToken, buildContext(httpRequest));
-            if (authResult.status() == AuthStatus.SUCCESS) {
-                log.debug("管理面板 Bearer Token 认证通过，用户: {}", authResult.userId());
-                HttpAuthUtils.setSessionUser(httpRequest, authResult.userId());
+            // 只拦截管理面板基路径（如 /admin/**），不感知版本号
+            if (!requestPath.startsWith(properties.getBasePath())) {
                 chain.doFilter(request, response);
                 return;
             }
-            log.warn("管理面板 Bearer Token 认证失败: {}", authResult.message());
-            resolveChallengeHandler().handleChallenge(httpRequest, httpResponse, authResult.message());
-            return;
-        }
 
-        // 3. 尝试 Basic 认证
-        String authHeader = httpRequest.getHeader("Authorization");
-        String[] basicCredentials = HttpAuthUtils.parseBasicAuth(authHeader);
-        if (basicCredentials != null) {
-            AuthRequest authRequest = new AuthRequest(basicCredentials[0], basicCredentials[1], null);
-            AuthResult authResult = authProvider.authenticate(authRequest, buildContext(httpRequest));
-
-            if (authResult.status() == AuthStatus.SUCCESS) {
-                log.debug("管理面板 Basic 认证通过，用户: {}", authResult.userId());
-                HttpAuthUtils.setSessionUser(httpRequest, authResult.userId());
+            // 公开端点放行（由 yml 配置，支持 Ant 风格模式）
+            if (isPublicEndpoint(httpRequest)) {
                 chain.doFilter(request, response);
                 return;
             }
-            log.warn("管理面板 Basic 认证失败: {}", authResult.message());
-            resolveChallengeHandler().handleChallenge(httpRequest, httpResponse, authResult.message());
-            return;
-        }
 
-        // 4. 无凭证信息，委托给挑战处理器
-        resolveChallengeHandler().handleChallenge(httpRequest, httpResponse, null);
+            // 1. 检查 Session 中是否已认证
+            String sessionUser = HttpAuthUtils.getSessionUser(httpRequest);
+            if (sessionUser != null) {
+                MDC.put("userId", sessionUser);
+                log.debug("管理面板会话认证通过，用户: {}", sessionUser);
+                chain.doFilter(request, response);
+                return;
+            }
+
+            // 2. 尝试 Bearer Token 认证
+            String bearerToken = HttpAuthUtils.extractBearerToken(httpRequest);
+            if (bearerToken != null) {
+                AuthResult authResult = authProvider.validateToken(bearerToken, buildContext(httpRequest));
+                if (authResult.status() == AuthStatus.SUCCESS) {
+                    MDC.put("userId", authResult.userId());
+                    log.debug("管理面板 Bearer Token 认证通过，用户: {}", authResult.userId());
+                    HttpAuthUtils.setSessionUser(httpRequest, authResult.userId());
+                    chain.doFilter(request, response);
+                    return;
+                }
+                log.warn("管理面板 Bearer Token 认证失败: {}", authResult.message());
+                resolveChallengeHandler().handleChallenge(httpRequest, httpResponse, authResult.message());
+                return;
+            }
+
+            // 3. 尝试 Basic 认证
+            String authHeader = httpRequest.getHeader("Authorization");
+            String[] basicCredentials = HttpAuthUtils.parseBasicAuth(authHeader);
+            if (basicCredentials != null) {
+                AuthRequest authRequest = new AuthRequest(basicCredentials[0], basicCredentials[1], null);
+                AuthResult authResult = authProvider.authenticate(authRequest, buildContext(httpRequest));
+
+                if (authResult.status() == AuthStatus.SUCCESS) {
+                    MDC.put("userId", authResult.userId());
+                    MDC.put("logType", "audit/login");
+                    log.info("用户 {} 登录成功", authResult.userId());
+                    MDC.remove("logType");
+                    HttpAuthUtils.setSessionUser(httpRequest, authResult.userId());
+                    chain.doFilter(request, response);
+                    return;
+                }
+                MDC.put("logType", "audit/login");
+                log.warn("用户 {} 登录失败: {}", basicCredentials[0], authResult.message());
+                MDC.remove("logType");
+                resolveChallengeHandler().handleChallenge(httpRequest, httpResponse, authResult.message());
+                return;
+            }
+
+            // 4. 无凭证信息，委托给挑战处理器
+            resolveChallengeHandler().handleChallenge(httpRequest, httpResponse, null);
+        } finally {
+            MDC.clear();
+        }
     }
 
     @Override

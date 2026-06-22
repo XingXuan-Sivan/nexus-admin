@@ -3,7 +3,6 @@ package com.nexusadmin.api.controller;
 import com.nexusadmin.api.auth.RequirePermission;
 import com.nexusadmin.api.domain.log.LogEntry;
 import com.nexusadmin.api.domain.log.LogLevel;
-import com.nexusadmin.api.domain.log.LogType;
 import com.nexusadmin.api.domain.result.DataResult;
 import com.nexusadmin.api.domain.result.PageResult;
 import com.nexusadmin.api.service.LogService;
@@ -39,26 +38,28 @@ public class LogController {
     /**
      * 按条件分页查询日志。
      *
-     * @param type    日志类型（可选）
-     * @param level   日志级别（可选）
-     * @param keyword 关键字（可选）
-     * @param from    开始时间（可选）
-     * @param to      结束时间（可选）
-     * @param page    当前页码
-     * @param size    每页数量
+     * @param category 主分类（可选）
+     * @param typeName 子类型名称（可选）
+     * @param level    日志级别（可选）
+     * @param keyword  关键字（可选）
+     * @param from     开始时间（可选）
+     * @param to       结束时间（可选）
+     * @param page     当前页码
+     * @param size     每页数量
      * @return 分页日志条目
      */
     @GetMapping
     @RequirePermission("system.view")
     @Operation(summary = "查询日志")
-    public PageResult<LogEntry> query(@RequestParam(required = false) LogType type,
+    public PageResult<LogEntry> query(@RequestParam(required = false) String category,
+                                       @RequestParam(required = false) String typeName,
                                        @RequestParam(required = false) LogLevel level,
                                        @RequestParam(required = false) String keyword,
                                        @RequestParam(required = false) Instant from,
                                        @RequestParam(required = false) Instant to,
                                        @RequestParam(defaultValue = "1") int page,
                                        @RequestParam(defaultValue = "20") int size) {
-        return logService.query(type, level, keyword, from, to, page, size);
+        return logService.query(category, typeName, level, keyword, from, to, page, size);
     }
 
     /**
