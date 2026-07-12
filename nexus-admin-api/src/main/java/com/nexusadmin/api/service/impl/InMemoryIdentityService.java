@@ -41,6 +41,7 @@ public class InMemoryIdentityService implements IdentityService {
         String[][] permDefs = {
                 {"plugins.view", "查看插件", "允许查看插件列表与详情", "plugins", "view"},
                 {"plugins.manage", "管理插件", "允许启动/停止/启用/禁用/卸载插件", "plugins", "manage"},
+                {"plugins.upload", "上传插件", "允许上传插件 JAR 包", "plugins", "upload"},
                 {"users.view", "查看用户", "允许查看用户列表与详情", "users", "view"},
                 {"users.manage", "管理用户", "允许创建/更新/删除用户", "users", "manage"},
                 {"roles.view", "查看角色", "允许查看角色列表与详情", "roles", "view"},
@@ -49,6 +50,9 @@ public class InMemoryIdentityService implements IdentityService {
                 {"config.view", "查看配置", "允许查看平台及插件配置", "config", "view"},
                 {"config.manage", "管理配置", "允许修改平台及插件配置", "config", "manage"},
                 {"system.view", "查看系统", "允许查看系统状态与平台信息", "system", "view"},
+                {"ai.view", "查看AI", "允许查看 AI 管理相关功能", "ai", "view"},
+                {"storage.view", "查看存储", "允许查看存储管理相关功能", "storage", "view"},
+                {"logs.view", "查看日志", "允许查看各类系统日志", "logs", "view"},
         };
         for (String[] def : permDefs) {
             Permission perm = new Permission(def[0], def[1], def[2], def[3], def[4], Map.of());

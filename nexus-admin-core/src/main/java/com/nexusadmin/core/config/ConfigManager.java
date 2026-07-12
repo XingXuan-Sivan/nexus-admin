@@ -3,8 +3,10 @@ package com.nexusadmin.core.config;
 import com.nexusadmin.core.config.event.ConfigListener;
 import com.nexusadmin.core.config.schema.ConfigSchema;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 配置管理器接口，配置中心的统一入口。
@@ -148,4 +150,13 @@ public interface ConfigManager {
      * @param listener 配置监听器
      */
     void removeListener(ConfigListener listener);
+
+    /**
+     * 获取所有已注册的配置域 ID。
+     *
+     * @return 配置域 ID 集合，不为空
+     */
+    default Set<String> getRegisteredSchemaIds() {
+        return Collections.emptySet();
+    }
 }

@@ -6,9 +6,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 配置管理服务。
@@ -141,7 +143,16 @@ public class ConfigService {
      * @return 配置域标识列表，不为空
      */
     public List<String> getScopes() {
-        throw new UnsupportedOperationException("获取配置域列表尚未实现");
+        Set<String> schemaIds = configFacade.configManager().getRegisteredSchemaIds();
+        // 使用有序集合保证平台配置优先
+        List<String> result = new ArrayList<>();
+        result.add("platform");
+        for (String id : schemaIds) {
+            if (!"platform".equals(id)) {
+                result.add(id);
+            }
+        }
+        return result;
     }
 
     /**
@@ -195,6 +206,12 @@ public class ConfigService {
      * @param scope 配置域标识
      */
     public void resetConfig(String scope) {
-        throw new UnsupportedOperationException("重置配置尚未实现");
+        if (scope != null) {
+            configFacade.getSchema(scope).ifPresent(schema ->
+                    schema.properties().keySet().forEach(key ->
+                            configFacade.remove(scope, key)
+                    )
+            );
+        }
     }
 }

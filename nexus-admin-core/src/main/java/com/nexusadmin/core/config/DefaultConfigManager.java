@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -409,6 +410,11 @@ public class DefaultConfigManager implements ConfigManager {
      */
     public ConfigResolver getResolver() {
         return resolver;
+    }
+
+    @Override
+    public Set<String> getRegisteredSchemaIds() {
+        return schemaRegistry.getRegisteredSchemaIds();
     }
 
     /**

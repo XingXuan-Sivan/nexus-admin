@@ -2,9 +2,12 @@ package com.nexusadmin.api.auth.impl;
 
 import com.nexusadmin.api.context.InvocationContext;
 import com.nexusadmin.api.auth.AuthProvider;
+import com.nexusadmin.api.domain.identity.CurrentUserInfo;
 import com.nexusadmin.core.config.ConfigManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Set;
 
 /**
  * 引导认证提供者。
@@ -100,5 +103,45 @@ public class BootstrapAuthProvider implements AuthProvider {
                 .status(AuthStatus.FAILED)
                 .message("Token 无效")
                 .build();
+    }
+
+    /**
+     * 根据 Token 获取当前用户信息。
+     * <p>
+     * 复用 {@link #validateToken} 的 Token 验证逻辑，
+     * 验证通过后返回包含角色和权限的管理员用户信息。
+     *
+     * @param token   Bearer Token（格式：token-{userId}）
+     * @param context 调用上下文
+     * @return 当前用户信息，Token 无效时返回 null
+     */
+    @Override
+    public CurrentUserInfo getCurrentUser(String token, InvocationContext context) {
+        AuthResult result = validateToken(token, context);
+        if (result.status() != AuthStatus.SUCCESS) {
+            return null;
+        }
+
+        String userId = result.userId();
+        String username = configManager.get(SCOPE, KEY_USERNAME).orElse("admin");
+
+        return new CurrentUserInfo(
+                userId,
+                username,
+                "管理员",
+                Set.of("ADMIN"),
+                Set.of(
+                        "plugins.view", "plugins.manage", "plugins.upload",
+                        "config.view", "config.manage",
+                        "system.view",
+                        "ui.view",
+                        "users.view", "users.manage",
+                        "roles.view", "roles.manage",
+                        "permissions.view",
+                        "ai.view",
+                        "storage.view",
+                        "logs.view"
+                )
+        );
     }
 }

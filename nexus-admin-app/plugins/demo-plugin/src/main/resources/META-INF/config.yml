@@ -1,0 +1,6 @@
+# Demo Plugin 默认配置
+
+greetingMessage: "Hello from Demo Plugin!"
+enableFeature: true
+maxItems: 100
+logLevel: INFO

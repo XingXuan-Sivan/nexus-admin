@@ -7,6 +7,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.sun.management.OperatingSystemMXBean;
+import java.lang.management.ManagementFactory;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Map;
 
 /**
@@ -46,10 +50,28 @@ public class SystemStatusService {
         int disabledPlugins = pluginFacade.listByState(PluginState.DISABLED).size();
         int failedPlugins = pluginFacade.listByState(PluginState.FAILED).size();
 
+        OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
+
+        double systemCpuLoad = osBean.getSystemCpuLoad();
+        double processCpuLoad = osBean.getProcessCpuLoad();
+        // 归一化：首次调用或不可用时返回 -1，NaN 表示无数据，统一置 0
+        if (Double.isNaN(systemCpuLoad) || systemCpuLoad < 0) {
+            systemCpuLoad = 0;
+        }
+        if (Double.isNaN(processCpuLoad) || processCpuLoad < 0) {
+            processCpuLoad = 0;
+        }
+
         Map<String, String> jvmInfo = Map.of(
+                "maxMemory", String.valueOf(Runtime.getRuntime().maxMemory()),
                 "totalMemory", String.valueOf(Runtime.getRuntime().totalMemory()),
                 "freeMemory", String.valueOf(Runtime.getRuntime().freeMemory()),
-                "availableProcessors", String.valueOf(Runtime.getRuntime().availableProcessors())
+                "availableProcessors", String.valueOf(Runtime.getRuntime().availableProcessors()),
+                "javaVersion", System.getProperty("java.version"),
+                "osTotalMemory", String.valueOf(osBean.getTotalMemorySize()),
+                "osFreeMemory", String.valueOf(osBean.getFreeMemorySize()),
+                "systemCpuLoad", String.valueOf(systemCpuLoad),
+                "processCpuLoad", String.valueOf(processCpuLoad)
         );
 
         return new SystemStatusView(
@@ -58,7 +80,7 @@ public class SystemStatusService {
                 activePlugins,
                 disabledPlugins,
                 failedPlugins,
-                0L,
+                ManagementFactory.getRuntimeMXBean().getUptime(),
                 jvmInfo,
                 Map.of()
         );
@@ -73,11 +95,13 @@ public class SystemStatusService {
         String name = configFacade.get("platform", "infoName").orElse("Nexus Admin");
         String version = configFacade.get("platform", "infoVersion").orElse("0.1.0-SNAPSHOT");
         String description = configFacade.get("platform", "infoDescription").orElse("插件化系统拓展平台");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+        String startTime = sdf.format(new Date(ManagementFactory.getRuntimeMXBean().getStartTime()));
         return new PlatformInfoView(
                 name,
                 version,
                 description,
-                Map.of("javaVersion", System.getProperty("java.version")),
+                Map.of("startTime", startTime),
                 Map.of("osName", System.getProperty("os.name"))
         );
     }

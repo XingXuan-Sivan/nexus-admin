@@ -4,6 +4,7 @@ import com.nexusadmin.api.auth.RequirePermission;
 import com.nexusadmin.api.domain.result.DataResult;
 import com.nexusadmin.api.domain.result.Result;
 import com.nexusadmin.api.service.ConfigService;
+import com.nexusadmin.core.facade.ConfigFacade;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,13 +30,17 @@ public class ConfigController {
 
     private final ConfigService configService;
 
+    private final ConfigFacade configFacade;
+
     /**
      * 构造配置管理控制器。
      *
      * @param configService 配置管理服务
+     * @param configFacade  核心配置管理门面
      */
-    public ConfigController(ConfigService configService) {
+    public ConfigController(ConfigService configService, ConfigFacade configFacade) {
         this.configService = configService;
+        this.configFacade = configFacade;
     }
 
     /**
@@ -86,9 +91,16 @@ public class ConfigController {
     @PutMapping("/{scope}")
     @RequirePermission("config.manage")
     @Operation(summary = "更新配置值")
+    @SuppressWarnings("unchecked")
     public Result updateConfig(@PathVariable("scope") String scope,
-                               @RequestBody Map<String, String> values) {
-        configService.updateConfig(scope, values);
+                               @RequestBody Map<String, Object> body) {
+        // 前端发送格式: { "values": { "key1": "val1", ... } }
+        Object valuesObj = body.get("values");
+        if (valuesObj instanceof Map<?, ?> rawMap) {
+            Map<String, String> values = new java.util.HashMap<>();
+            rawMap.forEach((k, v) -> values.put(String.valueOf(k), v != null ? v.toString() : null));
+            configService.updateConfig(scope, values);
+        }
         return Result.success();
     }
 
@@ -101,8 +113,17 @@ public class ConfigController {
     @PostMapping("/{scope}/reset")
     @RequirePermission("config.manage")
     @Operation(summary = "重置配置为默认值")
-    public Result resetConfig(@PathVariable("scope") String scope) {
-        configService.resetConfig(scope);
+    @SuppressWarnings("unchecked")
+    public Result resetConfig(@PathVariable("scope") String scope,
+                              @RequestBody(required = false) Map<String, Object> body) {
+        // 前端发送格式: { "keys": ["key1", "key2"] } 或 {}
+        if (body != null && body.get("keys") instanceof List<?> keyList) {
+            for (Object key : keyList) {
+                configFacade.remove(scope, String.valueOf(key));
+            }
+        } else {
+            configService.resetConfig(scope);
+        }
         return Result.success();
     }
 }
