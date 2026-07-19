@@ -1,8 +1,10 @@
 {
   "id": "system-user-plugin",
   "version": "1.0.0",
+  "name": "用户管理插件",
+  "author": "NexusAdmin",
   "mainClass": "com.nexusadmin.plugin.system.user.SystemUserPlugin",
-  "description": "用户管理插件",
+  "description": "提供用户管理、角色管理及权限分配功能",
   "contributes": {
     "menus": [
       {

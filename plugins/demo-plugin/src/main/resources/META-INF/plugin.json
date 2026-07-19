@@ -1,8 +1,10 @@
 {
   "id": "demo-plugin",
   "version": "1.0.0",
+  "name": "示例插件",
+  "author": "NexusAdmin",
   "mainClass": "com.nexusadmin.plugin.demo.DemoPlugin",
-  "description": "示例插件",
+  "description": "用于演示插件系统核心功能的示例插件",
   "contributes": {
     "menus": [
       {
