@@ -34,7 +34,7 @@ public interface SchemaValidator {
             JsonNode dataNode = mapper.readTree(dataJson);
             return validate(schemaNode, dataNode);
         } catch (Exception e) {
-            throw new IllegalArgumentException("JSON 解析失败: " + e.getMessage(), e);
+            throw new IllegalArgumentException("Schema 或配置 JSON 语法无效");
         }
     }
 

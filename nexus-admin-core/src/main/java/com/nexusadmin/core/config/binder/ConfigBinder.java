@@ -138,7 +138,7 @@ public class ConfigBinder {
                 try {
                     field.setAccessible(true);
                     field.set(target, value.get());
-                    log.trace("字段绑定: {}.{} = {}", scope, key, value.get());
+                    log.trace("字段绑定完成: {}.{}", scope, key);
                 } catch (Exception e) {
                     log.warn("字段绑定失败: {}.{}", scope, key, e);
                 }

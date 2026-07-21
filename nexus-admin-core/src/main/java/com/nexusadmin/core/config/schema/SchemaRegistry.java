@@ -22,6 +22,7 @@ public class SchemaRegistry {
      * Schema 存储映射，key 为 schemaId（配置域 ID）。
      */
     private final Map<String, ConfigSchema> schemas = new ConcurrentHashMap<>();
+    private final Map<String, SchemaState> states = new ConcurrentHashMap<>();
 
     /**
      * 注册 Schema。
@@ -34,6 +35,7 @@ public class SchemaRegistry {
         Objects.requireNonNull(schema, "Schema 不能为空");
 
         schemas.put(schemaId, schema);
+        states.put(schemaId, new SchemaState("valid", null));
         log.debug("已注册 Schema: {} (属性数: {})", schemaId, schema.propertyCount());
     }
 
@@ -74,6 +76,7 @@ public class SchemaRegistry {
      */
     public void unregister(String schemaId) {
         schemas.remove(schemaId);
+        states.remove(schemaId);
         log.debug("已注销 Schema: {}", schemaId);
     }
 
@@ -118,6 +121,27 @@ public class SchemaRegistry {
      */
     public void clear() {
         schemas.clear();
+        states.clear();
         log.debug("已清空所有 Schema");
+    }
+
+    /** 记录存在但无效的 Schema；不保留可能含敏感默认值的原始文档。 */
+    public void markInvalid(String schemaId, String diagnostic) {
+        schemas.remove(schemaId);
+        states.put(schemaId, new SchemaState("invalid", diagnostic));
+    }
+
+    /** 记录未提供 Schema 的配置域。 */
+    public void markMissing(String schemaId) {
+        schemas.remove(schemaId);
+        states.put(schemaId, new SchemaState("missing", null));
+    }
+
+    public SchemaState state(String schemaId) {
+        return states.getOrDefault(schemaId, new SchemaState("missing", null));
+    }
+
+    /** Schema 加载状态。 */
+    public record SchemaState(String status, String diagnostic) {
     }
 }

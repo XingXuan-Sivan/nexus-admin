@@ -15,7 +15,8 @@ public record PluginView(String pluginId,
                          String name,
                          String description,
                          PluginStateView state,
-                         String provider) {
+                         String provider,
+                         PluginConfigurationView configuration) {
 
     /**
      * 创建插件摘要视图。
@@ -27,5 +28,7 @@ public record PluginView(String pluginId,
         description = description != null ? description : "";
         state = state != null ? state : PluginStateView.DISCOVERED;
         provider = provider != null ? provider : "";
+        configuration = configuration != null ? configuration
+                : new PluginConfigurationView(pluginId, false, false, "missing", true, false);
     }
 }

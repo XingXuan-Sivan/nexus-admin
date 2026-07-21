@@ -1,6 +1,0 @@
-pluginId: platform.disabled
-properties:
-  disabled-plugins:
-    type: array
-    title: 禁用插件列表
-    description: 配置中心使用 platform.disabled.disabled-plugins 进行持久化存储

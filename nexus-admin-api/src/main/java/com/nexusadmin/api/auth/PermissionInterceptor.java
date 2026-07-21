@@ -1,13 +1,9 @@
 package com.nexusadmin.api.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nexusadmin.api.context.InvocationContext;
-import com.nexusadmin.api.auth.PermissionResolver.PermissionCheck;
-import com.nexusadmin.api.auth.PermissionResolver.PermissionDecision;
 import com.nexusadmin.api.domain.result.ProblemDetail;
 import com.nexusadmin.api.domain.result.StatusCodes;
 import com.nexusadmin.api.util.HttpAuthUtils;
-import com.nexusadmin.core.extension.ExtensionConsumer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -33,7 +29,7 @@ public class PermissionInterceptor implements HandlerInterceptor {
 
     private static final String TYPE_BASE = "https://nexusadmin.io/probs/";
 
-    private final ExtensionConsumer<PermissionResolver> resolverConsumer;
+    private final PermissionAccess permissionAccess;
     private final ObjectMapper objectMapper;
 
     /**
@@ -42,9 +38,9 @@ public class PermissionInterceptor implements HandlerInterceptor {
      * @param resolverConsumer 权限解析器扩展点消费者
      * @param objectMapper     JSON 序列化器
      */
-    public PermissionInterceptor(ExtensionConsumer<PermissionResolver> resolverConsumer,
+    public PermissionInterceptor(PermissionAccess permissionAccess,
                                  ObjectMapper objectMapper) {
-        this.resolverConsumer = resolverConsumer;
+        this.permissionAccess = permissionAccess;
         this.objectMapper = objectMapper;
     }
 
@@ -80,21 +76,7 @@ public class PermissionInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 委托 PermissionResolver 校验具体权限
-        PermissionResolver resolver = resolverConsumer.get().orElse(null);
-        if (resolver == null) {
-            log.warn("未找到 PermissionResolver 扩展点实现，默认放行");
-            return true;
-        }
-
-        InvocationContext context = buildContext(request, userId);
-        String[] parts = permission.split("\\.", 2);
-        String resource = parts.length > 1 ? parts[0] : permission;
-        String action = parts.length > 1 ? parts[1] : "*";
-
-        PermissionCheck check = new PermissionCheck(userId, resource, action, null);
-        PermissionDecision decision = resolver.decide(check, context);
-
+        PermissionAccess.AccessDecision decision = permissionAccess.check(request, permission);
         if (!decision.allowed()) {
             log.warn("权限校验失败，用户: {}，所需权限: {}，原因: {}", userId, permission, decision.reason());
             writeForbiddenResponse(response, "权限不足: " + permission);
@@ -102,22 +84,6 @@ public class PermissionInterceptor implements HandlerInterceptor {
         }
 
         return true;
-    }
-
-    /**
-     * 构建调用上下文。
-     *
-     * @param request HTTP 请求
-     * @param userId  用户标识
-     * @return 调用上下文
-     */
-    private InvocationContext buildContext(HttpServletRequest request, String userId) {
-        return InvocationContext.builder()
-                .userId(userId)
-                .channelId("HTTP")
-                .attribute("clientIp", request.getRemoteAddr())
-                .attribute("userAgent", request.getHeader("User-Agent"))
-                .build();
     }
 
     /**

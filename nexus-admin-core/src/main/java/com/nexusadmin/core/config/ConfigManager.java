@@ -72,6 +72,33 @@ public interface ConfigManager {
     void remove(String scope, String key);
 
     /**
+     * 原子替换配置域的持久化层。
+     *
+     * @param scope            配置域
+     * @param values           完整持久化配置树
+     * @param expectedRevision 乐观锁 revision
+     * @param changedPaths     本次变更的 JSON Pointer 集合
+     * @return 新 revision
+     */
+    String replaceScope(String scope,
+                        Map<String, Object> values,
+                        String expectedRevision,
+                        Set<String> changedPaths);
+
+    /** 原子保存受控配置文档，并在成功后发布脱敏变更事件。 */
+    String replaceDocument(String scope,
+                           String format,
+                           String content,
+                           String expectedRevision,
+                           Set<String> changedPaths);
+
+    /** 获取配置域持久化层快照。 */
+    Map<String, Object> getPersistedScope(String scope);
+
+    /** 获取配置域当前 revision。 */
+    String getRevision(String scope);
+
+    /**
      * 获取指定配置域的 Schema。
      *
      * @param schemaId 配置域 ID

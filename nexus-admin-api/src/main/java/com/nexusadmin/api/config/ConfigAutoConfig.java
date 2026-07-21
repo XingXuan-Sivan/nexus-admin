@@ -18,8 +18,8 @@ import java.nio.file.Paths;
  * 将 ConfigRuntime 装配的核心组件桥接到 Spring 容器，不参与组件创建与依赖注入逻辑——
  * 组件创建由 {@link ConfigRuntime} 全权负责。
  * <p>
- * 所有 Bean 均带 {@link ConditionalOnMissingBean} 保护，应用层可通过声明同类型 Bean
- * 覆盖任意组件。也可直接声明 {@link ConfigRuntime} Bean 一次性替换全部组件。
+ * 配置中心必须作为一个一致性聚合整体替换。应用层只能声明 {@link ConfigRuntime} Bean
+ * 一次性替换全部组件，禁止单独覆盖 manager/facade 形成 split-brain。
  * <p>
  * <strong>覆盖优先级：</strong>app @Bean &gt; api @ConditionalOnMissingBean &gt; ConfigRuntime 默认值
  */
@@ -47,26 +47,24 @@ public class ConfigAutoConfig {
 
     /**
      * 配置管理器。
-     * <p>可通过声明同类型 Bean 覆盖此默认装配</p>
+     * <p>始终来自同一个 ConfigRuntime。</p>
      *
      * @param rt 配置中心运行时
      * @return ConfigManager 实例
      */
     @Bean
-    @ConditionalOnMissingBean(ConfigManager.class)
     public ConfigManager configManager(ConfigRuntime rt) {
         return rt.configManager();
     }
 
     /**
      * 配置管理门面。
-     * <p>可通过声明同类型 Bean 覆盖此默认装配</p>
+     * <p>始终来自同一个 ConfigRuntime。</p>
      *
      * @param rt 配置中心运行时
      * @return ConfigFacade 实例
      */
     @Bean
-    @ConditionalOnMissingBean(ConfigFacade.class)
     public ConfigFacade configFacade(ConfigRuntime rt) {
         return rt.facade();
     }

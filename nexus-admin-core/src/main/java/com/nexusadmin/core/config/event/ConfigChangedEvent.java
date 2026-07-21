@@ -32,6 +32,9 @@ public class ConfigChangedEvent extends Event {
      */
     private final String configScope;
 
+    /** 是否为敏感配置变更。 */
+    private final boolean sensitive;
+
     /**
      * 构造配置变更事件。
      * <p>使用平台作用域，表示这是平台核心发布的配置变更事件。</p>
@@ -42,11 +45,20 @@ public class ConfigChangedEvent extends Event {
      * @param oldValue    旧配置值
      */
     public ConfigChangedEvent(String configScope, String key, String value, String oldValue) {
+        this(configScope, key, value, oldValue, false);
+    }
+
+    public ConfigChangedEvent(String configScope,
+                              String key,
+                              String value,
+                              String oldValue,
+                              boolean sensitive) {
         super(EventScope.platform());
         this.configScope = Objects.requireNonNull(configScope, "配置作用域不能为空");
         this.key = Objects.requireNonNull(key, "配置键名不能为空");
         this.value = value;
         this.oldValue = oldValue;
+        this.sensitive = sensitive;
     }
 
     /**
@@ -94,8 +106,13 @@ public class ConfigChangedEvent extends Event {
         return configScope + "." + key;
     }
 
+    public boolean sensitive() {
+        return sensitive;
+    }
+
     @Override
     public String toString() {
-        return String.format("ConfigChangedEvent[scope=%s, key=%s, value=%s]", configScope, key, value);
+        return String.format("ConfigChangedEvent[scope=%s, key=%s, sensitive=%s]",
+                configScope, key, sensitive);
     }
 }

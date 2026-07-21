@@ -7,6 +7,7 @@ import com.nexusadmin.core.config.schema.ConfigSchema;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 配置管理门面。
@@ -90,6 +91,30 @@ public class ConfigFacade {
      */
     public void remove(String scope, String key) {
         configManager.remove(scope, key);
+    }
+
+    public String replaceScope(String scope,
+                               Map<String, Object> values,
+                               String expectedRevision,
+                               Set<String> changedPaths) {
+        return configManager.replaceScope(scope, values, expectedRevision, changedPaths);
+    }
+
+    public String replaceDocument(String scope,
+                                  String format,
+                                  String content,
+                                  String expectedRevision,
+                                  Set<String> changedPaths) {
+        return configManager.replaceDocument(scope, format, content,
+                expectedRevision, changedPaths);
+    }
+
+    public Map<String, Object> getPersistedScope(String scope) {
+        return configManager.getPersistedScope(scope);
+    }
+
+    public String getRevision(String scope) {
+        return configManager.getRevision(scope);
     }
 
     /**

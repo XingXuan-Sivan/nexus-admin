@@ -4,6 +4,7 @@ import com.nexusadmin.api.auth.RequirePermission;
 import com.nexusadmin.api.domain.view.PluginDetailView;
 import com.nexusadmin.api.domain.view.PluginStateView;
 import com.nexusadmin.api.domain.view.PluginView;
+import com.nexusadmin.api.domain.view.PluginConfigurationView;
 import com.nexusadmin.api.domain.result.DataResult;
 import com.nexusadmin.api.domain.result.Result;
 import com.nexusadmin.api.domain.result.StatusCodes;
@@ -192,7 +193,8 @@ public class PluginController {
                     pluginId,
                     "已上传，重启服务后生效",
                     PluginStateView.DISCOVERED,
-                    ""
+                    "",
+                    new PluginConfigurationView(pluginId, false, false, "missing", true, false)
             );
             return DataResult.success(view);
         } catch (IOException e) {

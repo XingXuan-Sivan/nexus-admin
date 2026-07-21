@@ -7,14 +7,14 @@ import java.util.Optional;
 /**
  * 环境变量配置源，从系统环境变量读取配置。
  * <p>优先级最高，用于覆盖其他配置源的值。</p>
- * <p>环境变量命名规范：NEXUS_&lt;SCOPE&gt;_&lt;KEY&gt;，如 NEXUS_PLUGIN_ORDER_TIMEOUT</p>
+ * <p>环境变量命名规范：PANEL_&lt;SCOPE&gt;_&lt;KEY&gt;，如 PANEL_ORDER_PLUGIN_TIMEOUT</p>
  */
 public class EnvConfigSource implements ConfigSource {
 
     /**
      * 环境变量前缀。
      */
-    private static final String ENV_PREFIX = "NEXUS_";
+    private static final String ENV_PREFIX = "PANEL_";
 
     @Override
     public Optional<String> get(String scope, String key) {

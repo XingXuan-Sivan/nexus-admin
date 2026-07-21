@@ -1,6 +1,7 @@
 package com.nexusadmin.core.config.schema;
 
 import java.util.Objects;
+import java.util.Map;
 
 /**
  * Schema 验证消息，描述单条验证错误信息。
@@ -23,6 +24,9 @@ public final class ValidationMessage {
      */
     private final String message;
 
+    /** 不含被校验值的结构化约束参数。 */
+    private final Map<String, Object> params;
+
     /**
      * 构造验证消息。
      *
@@ -31,9 +35,25 @@ public final class ValidationMessage {
      * @param message 错误描述信息
      */
     public ValidationMessage(String keyword, String path, String message) {
+        this(keyword, path, message, Map.of());
+    }
+
+    /**
+     * 构造带安全结构化参数的验证消息。
+     *
+     * @param keyword 验证关键字
+     * @param path    错误路径
+     * @param message 错误描述信息
+     * @param params  仅包含 Schema 约束、不包含被校验值的参数
+     */
+    public ValidationMessage(String keyword,
+                             String path,
+                             String message,
+                             Map<String, Object> params) {
         this.keyword = keyword;
         this.path = path;
         this.message = Objects.requireNonNull(message, "错误描述不能为空");
+        this.params = params == null ? Map.of() : Map.copyOf(params);
     }
 
     /**
@@ -63,6 +83,15 @@ public final class ValidationMessage {
         return message;
     }
 
+    /**
+     * 获取可安全返回给客户端的约束参数。
+     *
+     * @return 不可变参数 Map
+     */
+    public Map<String, Object> params() {
+        return params;
+    }
+
     @Override
     public String toString() {
         if (path != null && !path.isEmpty()) {
@@ -77,11 +106,12 @@ public final class ValidationMessage {
         if (!(o instanceof ValidationMessage that)) return false;
         return Objects.equals(keyword, that.keyword)
                 && Objects.equals(path, that.path)
-                && message.equals(that.message);
+                && message.equals(that.message)
+                && params.equals(that.params);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(keyword, path, message);
+        return Objects.hash(keyword, path, message, params);
     }
 }

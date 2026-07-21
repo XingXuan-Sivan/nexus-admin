@@ -2,6 +2,7 @@ package com.nexusadmin.core.config.store;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 配置存储 SPI 接口，定义配置持久化的标准操作。
@@ -42,6 +43,57 @@ public interface ConfigStore {
      * @param config 配置映射
      */
     void setAll(String scope, Map<String, Object> config);
+
+    /**
+     * 以 scope 为事务边界替换完整持久化配置，并执行乐观并发检查。
+     *
+     * @param scope            配置域
+     * @param config           新的持久化配置
+     * @param expectedRevision 客户端读取到的 revision
+     * @return 写入后的 revision
+     */
+    default String replaceScope(String scope,
+                                Map<String, Object> config,
+                                String expectedRevision) {
+        throw new UnsupportedOperationException("当前配置存储不支持 revision 原子写入");
+    }
+
+    /** 获取配置域当前 revision。 */
+    default String getRevision(String scope) {
+        return "unsupported";
+    }
+
+    /** 列出存储中已存在的配置域。 */
+    default Set<String> listScopes() {
+        return Set.of();
+    }
+
+    /** 当前存储是否支持受控原始文档。 */
+    default boolean supportsDocuments() {
+        return false;
+    }
+
+    /** 读取配置域对应的受控文档。 */
+    default Optional<StoredConfigDocument> readDocument(String scope) {
+        return Optional.empty();
+    }
+
+    /** 将 YAML 或 JSON 文档解析为类型化配置树，不产生写入。 */
+    default Map<String, Object> parseDocument(String format, String content) {
+        throw new UnsupportedOperationException("当前配置存储不支持原始文档");
+    }
+
+    /**
+     * 校验并原子保存受控文档。
+     *
+     * @return 写入后的 revision
+     */
+    default String replaceDocument(String scope,
+                                   String format,
+                                   String content,
+                                   String expectedRevision) {
+        throw new UnsupportedOperationException("当前配置存储不支持原始文档");
+    }
 
     /**
      * 删除指定配置。

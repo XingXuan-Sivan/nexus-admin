@@ -12,7 +12,8 @@
         "label": "示例功能",
         "icon": "flask",
         "order": 100,
-        "route": "/demo"
+        "route": "/demo",
+        "permissions": ["demo.view"]
       }
     ],
     "routes": [
@@ -20,7 +21,8 @@
         "path": "/demo",
         "component": "demo-plugin/pages/Index",
         "title": "示例页面",
-        "icon": "flask"
+        "icon": "flask",
+        "permissions": ["demo.view"]
       }
     ],
     "permissions": [

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nexus-admin:config:platform.disabled",
+  "type": "object",
+  "title": "插件禁用状态",
+  "additionalProperties": false,
+  "properties": {
+    "disabled-plugins": {
+      "type": "array",
+      "title": "禁用插件列表",
+      "description": "由插件管理功能维护的禁用插件标识",
+      "default": [],
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

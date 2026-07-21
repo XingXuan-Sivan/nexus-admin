@@ -34,7 +34,8 @@ public record PluginDetailView(String pluginId,
                                List<ExtensionView> extensions,
                                Instant loadedAt,
                                Instant startedAt,
-                               Map<String, String> attributes) {
+                               Map<String, String> attributes,
+                               PluginConfigurationView configuration) {
 
     /**
      * 创建插件详情视图。
@@ -51,6 +52,8 @@ public record PluginDetailView(String pluginId,
         extensions = extensions != null ? List.copyOf(extensions) : List.of();
         attributes = attributes == null ? Collections.emptyMap()
                 : Collections.unmodifiableMap(new HashMap<>(attributes));
+        configuration = configuration != null ? configuration
+                : new PluginConfigurationView(pluginId, false, false, "missing", true, false);
     }
 
     /**

@@ -42,12 +42,12 @@ public class InMemoryPluginStateStore implements IPluginStateStore {
     }
 
     /**
-     * 从 disabled.yml 加载初始状态（供 ConfigFacade 调用）。
+     * 从 platform.disabled.yml 加载初始状态（供 ConfigFacade 调用）。
      */
     public void loadFromDisabledList(List<String> disabledPluginIds) {
         for (String pluginId : disabledPluginIds) {
             store.put(pluginId, new PluginStateRecord(pluginId, false,
-                    "从 disabled.yml 加载", Instant.now(), "system"));
+                    "从 platform.disabled.yml 加载", Instant.now(), "system"));
         }
     }
 }

@@ -105,12 +105,13 @@ public final class PluginContributes {
     /**
      * 菜单贡献项。
      *
-     * @param id       菜单唯一标识
-     * @param label    菜单显示文本
-     * @param icon     菜单图标标识
-     * @param parentId 父级菜单ID
-     * @param order    排序权重
-     * @param route    关联路由路径
+     * @param id          菜单唯一标识
+     * @param label       菜单显示文本
+     * @param icon        菜单图标标识
+     * @param parentId    父级菜单ID
+     * @param order       排序权重
+     * @param route       关联路由路径
+     * @param permissions 访问菜单所需权限列表（AND 关系）
      */
     public record MenuContribution(
             String id,
@@ -118,7 +119,8 @@ public final class PluginContributes {
             String icon,
             String parentId,
             int order,
-            String route
+            String route,
+            List<String> permissions
     ) {
         /**
          * 紧凑构造器，处理空值默认。
@@ -131,6 +133,7 @@ public final class PluginContributes {
             icon = icon != null ? icon : "";
             parentId = parentId != null ? parentId : "";
             route = route != null ? route : "";
+            permissions = permissions != null ? List.copyOf(permissions) : List.of();
         }
     }
 

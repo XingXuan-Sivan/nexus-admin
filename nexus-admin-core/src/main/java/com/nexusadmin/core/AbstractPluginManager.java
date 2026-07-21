@@ -379,13 +379,16 @@ public abstract class AbstractPluginManager implements PluginManager {
         // 4. 从事件总线取消该插件的所有监听器
         eventBusFacade.unsubscribeByPlugin(pluginId);
 
-        // 5. 释放 JVM 资源
+        // 5. 释放配置中心持有的 Schema、默认配置缓存与插件 ClassLoader 引用
+        configFacade.unregisterPlugin(pluginId);
+
+        // 6. 释放 JVM 资源
         closeIfPossible(wrapper.classLoader());
 
-        // 6. 移除上下文缓存
+        // 7. 移除上下文缓存
         pluginContexts.remove(pluginId);
 
-        // 7. 迁移到 UNLOADED 状态
+        // 8. 迁移到 UNLOADED 状态
         transition(wrapper, PluginState.UNLOADED);
     }
 

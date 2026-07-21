@@ -8,6 +8,7 @@ import com.nexusadmin.core.config.resolver.ConfigSource;
 import com.nexusadmin.core.config.resolver.impl.DefaultConfigSource;
 import com.nexusadmin.core.config.resolver.impl.EnvConfigSource;
 import com.nexusadmin.core.config.resolver.impl.FileConfigSource;
+import com.nexusadmin.core.config.schema.ConfigSchema;
 import com.nexusadmin.core.config.schema.SchemaProvider;
 import com.nexusadmin.core.config.schema.SchemaRegistry;
 import com.nexusadmin.core.config.schema.SchemaValidator;
@@ -343,6 +344,8 @@ public final class ConfigRuntime {
          */
         public ConfigRuntime build() {
             Objects.requireNonNull(this.eventBus, "eventBus 不能为空（配置中心依赖事件总线发布变更事件）");
+            ClassLoader effectivePlatformClassLoader = this.platformClassLoader != null
+                    ? this.platformClassLoader : ConfigRuntime.class.getClassLoader();
 
             // 1. ConfigStore
             ConfigStore store = this.configStore;
@@ -373,9 +376,12 @@ public final class ConfigRuntime {
             } else if (resolverCreated) {
                 // 添加默认配置源：环境变量 > 文件 > 插件默认
                 resolver.addSource(new EnvConfigSource());
-                resolver.addSource(new FileConfigSource(this.configDir));
-                resolver.addSource(new DefaultConfigSource(pluginId ->
-                        "platform".equals(pluginId) ? this.platformClassLoader : null));
+                resolver.addSource(new FileConfigSource(store));
+                DefaultConfigSource.MutableClassLoaderProvider classLoaders =
+                        new DefaultConfigSource.MutableClassLoaderProvider();
+                classLoaders.register("platform", effectivePlatformClassLoader);
+                classLoaders.register("platform.disabled", effectivePlatformClassLoader);
+                resolver.addSource(new DefaultConfigSource(classLoaders, registry));
             }
 
             // 4. ConfigUIBuilder
@@ -407,8 +413,17 @@ public final class ConfigRuntime {
                 manager.registerSchemaValidator(new JsonSchemaValidator());
             }
 
+            // 平台保留域由 runtime 显式装配，不经过插件注册入口。
+            PlatformSchemaProvider platformProvider = new PlatformSchemaProvider();
+            for (String scope : List.of("platform", "platform.disabled")) {
+                ConfigSchema schema = platformProvider.load(scope, effectivePlatformClassLoader)
+                        .orElseThrow(() -> new IllegalStateException(
+                                "缺少平台配置 Schema: " + scope));
+                registry.register(scope, schema);
+            }
+
             return new ConfigRuntime(manager, registry, resolver, store, builder,
-                    this.eventBus, this.configDir, this.platformClassLoader);
+                    this.eventBus, this.configDir, effectivePlatformClassLoader);
         }
     }
 }

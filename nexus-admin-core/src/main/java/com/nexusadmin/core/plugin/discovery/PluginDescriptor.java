@@ -1,11 +1,11 @@
 package com.nexusadmin.core.plugin.discovery;
 
+import com.nexusadmin.core.config.ConfigScopeIds;
 import com.nexusadmin.core.exception.DescriptorParseException;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 /**
  * 插件描述数据模型（不可变）。
@@ -17,8 +17,6 @@ public final class PluginDescriptor {
      * 插件ID格式校验正则：以字母开头，可包含字母、数字、点号、横线或下划线。
      * <p>支持类似 com.company.myplugin 的命名空间格式。</p>
      */
-    private static final Pattern ID_PATTERN = Pattern.compile("^[a-zA-Z][a-zA-Z0-9._\\-]{1,127}$");
-
     private final String id;
     private final String version;
     private final String name;
@@ -34,7 +32,7 @@ public final class PluginDescriptor {
     /**
      * 构造插件描述对象。
      *
-     * @param id          插件唯一标识，必须符合 {@link #ID_PATTERN} 格式
+     * @param id          插件唯一标识，必须符合配置域统一 ID 规范
      * @param version     插件版本号，不能为空
      * @param name        插件名称，可为空
      * @param description 插件描述，可为空
@@ -117,8 +115,12 @@ public final class PluginDescriptor {
         if (id == null || id.isBlank()) {
             throw new DescriptorParseException("插件ID不能为空");
         }
-        if (!ID_PATTERN.matcher(id).matches()) {
-            throw new DescriptorParseException("插件ID格式非法: " + id + "（必须匹配正则: " + ID_PATTERN.pattern() + "）");
+        if (!ConfigScopeIds.isValid(id)) {
+            throw new DescriptorParseException("插件ID格式非法: " + id
+                    + "（必须为小写 URL-safe 分段 ID，长度不超过 128）");
+        }
+        if (ConfigScopeIds.isReserved(id)) {
+            throw new DescriptorParseException("插件ID属于平台保留配置域: " + id);
         }
         if (version == null || version.isBlank()) {
             throw new DescriptorParseException("插件版本号不能为空");

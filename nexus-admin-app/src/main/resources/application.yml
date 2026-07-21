@@ -36,6 +36,9 @@ knife4j:
 
 # 管理面板 Web 层配置
 panel:
+  auth:
+    # 引导认证不提供代码默认密码；通过环境变量或受控部署配置注入
+    bootstrap-password: ${PANEL_BOOTSTRAP_PASSWORD:}
   web:
     # 管理面板 API 基础路径（不含版本号），过滤器/拦截器基于此值决定拦截范围
     base-path: /admin

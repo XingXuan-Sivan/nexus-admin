@@ -19,7 +19,7 @@ import java.util.Set;
  * <strong>配置项（platform 作用域）：</strong>
  * <ul>
  *   <li>bootstrapUsername - 管理员用户名，默认 admin</li>
- *   <li>bootstrapPassword - 管理员密码，默认 admin123</li>
+ *   <li>bootstrapPassword - 管理员密码；未配置时使用启动配置，不提供代码默认密码</li>
  * </ul>
  * <p>
  * 凭据每次从 ConfigManager 动态读取，支持运行时热更新。
@@ -33,23 +33,26 @@ public class BootstrapAuthProvider implements AuthProvider {
     private static final String KEY_PASSWORD = "bootstrapPassword";
 
     private final ConfigManager configManager;
+    private final String bootstrapPassword;
 
     /**
      * 构造引导认证提供者。
      *
      * @param configManager 配置管理器，用于动态读取管理员凭据
      */
-    public BootstrapAuthProvider(ConfigManager configManager) {
+    public BootstrapAuthProvider(ConfigManager configManager, String bootstrapPassword) {
         this.configManager = configManager;
+        this.bootstrapPassword = bootstrapPassword;
         log.info("引导认证提供者已初始化");
     }
 
     @Override
     public AuthResult authenticate(AuthRequest request, InvocationContext context) {
         String username = configManager.get(SCOPE, KEY_USERNAME).orElse("admin");
-        String password = configManager.get(SCOPE, KEY_PASSWORD).orElse("admin123");
+        String password = configManager.get(SCOPE, KEY_PASSWORD).orElse(bootstrapPassword);
 
-        if (username.equals(request.principal()) && password.equals(request.credential())) {
+        if (password != null && !password.isBlank()
+                && username.equals(request.principal()) && password.equals(request.credential())) {
             return AuthResult.builder()
                     .status(AuthStatus.SUCCESS)
                     .userId(username)
@@ -133,6 +136,8 @@ public class BootstrapAuthProvider implements AuthProvider {
                 Set.of(
                         "plugins.view", "plugins.manage", "plugins.upload",
                         "config.view", "config.manage",
+                        "config.secret.rotate",
+                        "config.document.view", "config.document.manage",
                         "system.view",
                         "ui.view",
                         "users.view", "users.manage",

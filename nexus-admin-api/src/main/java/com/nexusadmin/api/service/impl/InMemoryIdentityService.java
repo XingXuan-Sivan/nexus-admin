@@ -34,7 +34,7 @@ public class InMemoryIdentityService implements IdentityService {
         initBuiltinPermissions();
         initBuiltinRoles();
         initBuiltinUsers();
-        log.info("已初始化 InMemoryIdentityService，预置 admin 用户及 10 个权限码");
+        log.info("已初始化 InMemoryIdentityService，预置 admin 用户及内置权限码");
     }
 
     private void initBuiltinPermissions() {
@@ -49,6 +49,9 @@ public class InMemoryIdentityService implements IdentityService {
                 {"permissions.view", "查看权限", "允许查看权限列表与权限树", "permissions", "view"},
                 {"config.view", "查看配置", "允许查看平台及插件配置", "config", "view"},
                 {"config.manage", "管理配置", "允许修改平台及插件配置", "config", "manage"},
+                {"config.secret.rotate", "轮换敏感配置", "允许替换或清除敏感配置值", "config", "secret.rotate"},
+                {"config.document.view", "查看配置文档", "允许查看非敏感配置原始文档", "config.document", "view"},
+                {"config.document.manage", "管理配置文档", "允许修改非敏感配置原始文档", "config.document", "manage"},
                 {"system.view", "查看系统", "允许查看系统状态与平台信息", "system", "view"},
                 {"ai.view", "查看AI", "允许查看 AI 管理相关功能", "ai", "view"},
                 {"storage.view", "查看存储", "允许查看存储管理相关功能", "storage", "view"},

@@ -19,7 +19,8 @@
         "icon": "user",
         "parentId": "user-management",
         "order": 1,
-        "route": "/users"
+        "route": "/users",
+        "permissions": ["users.view"]
       },
       {
         "id": "role-list",
@@ -27,7 +28,8 @@
         "icon": "shield-check",
         "parentId": "user-management",
         "order": 2,
-        "route": "/roles"
+        "route": "/roles",
+        "permissions": ["roles.view"]
       }
     ],
     "routes": [

@@ -18,6 +18,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 /**
  * 认证体系装配配置。
@@ -46,8 +48,10 @@ public class AuthAutoConfig {
     @Bean
     @ConditionalOnMissingBean(BootstrapAuthProvider.class)
     public BootstrapAuthProvider bootstrapAuthProvider(ConfigManager configManager,
-                                                       ExtensionRegistry extensionRegistry) {
-        BootstrapAuthProvider provider = new BootstrapAuthProvider(configManager);
+                                                       ExtensionRegistry extensionRegistry,
+                                                       @Value("${panel.auth.bootstrap-password:}")
+                                                       String bootstrapPassword) {
+        BootstrapAuthProvider provider = new BootstrapAuthProvider(configManager, bootstrapPassword);
         extensionRegistry.register(AuthProvider.class, provider, 25);
         return provider;
     }
@@ -161,6 +165,20 @@ public class AuthAutoConfig {
     }
 
     /**
+     * 当前请求权限判定入口，供接口拦截器与业务能力元数据共同使用。
+     *
+     * @param permissionAccess 当前请求权限判定入口
+     * @return 权限判定入口
+     */
+    @Bean
+    @ConditionalOnMissingBean(PermissionAccess.class)
+    public PermissionAccess permissionAccess(
+            @Qualifier("permissionResolverConsumer")
+            ExtensionConsumer<PermissionResolver> resolverConsumer) {
+        return new PermissionAccess(resolverConsumer);
+    }
+
+    /**
      * 权限检查拦截器。
      * <p>基于 {@link com.nexusadmin.api.auth.RequirePermission} 注解对管理面板 API 进行权限校验。</p>
      *
@@ -171,8 +189,8 @@ public class AuthAutoConfig {
     @Bean
     @ConditionalOnMissingBean(PermissionInterceptor.class)
     public PermissionInterceptor permissionInterceptor(
-            ExtensionConsumer<PermissionResolver> resolverConsumer,
+            PermissionAccess permissionAccess,
             ObjectMapper objectMapper) {
-        return new PermissionInterceptor(resolverConsumer, objectMapper);
+        return new PermissionInterceptor(permissionAccess, objectMapper);
     }
 }

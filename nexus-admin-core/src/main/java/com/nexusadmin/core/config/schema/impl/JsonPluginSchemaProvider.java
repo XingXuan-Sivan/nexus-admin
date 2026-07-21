@@ -2,6 +2,10 @@ package com.nexusadmin.core.config.schema.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SchemaLocation;
+import com.networknt.schema.SpecVersion;
 import com.nexusadmin.core.config.schema.ConfigProperty;
 import com.nexusadmin.core.config.schema.ConfigSchema;
 import com.nexusadmin.core.config.schema.SchemaProvider;
@@ -17,6 +21,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * JSON Schema 插件配置提供者，从 META-INF/schema.json 加载配置 Schema。
@@ -40,6 +46,7 @@ public class JsonPluginSchemaProvider implements SchemaProvider {
      * Schema 验证器。
      */
     private final SchemaValidator validator;
+    private final JsonSchema metaSchema;
 
     /**
      * 构造 JSON Schema 插件配置提供者。
@@ -47,6 +54,9 @@ public class JsonPluginSchemaProvider implements SchemaProvider {
     public JsonPluginSchemaProvider() {
         this.objectMapper = new ObjectMapper();
         this.validator = new JsonSchemaValidator(objectMapper);
+        this.metaSchema = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
+                .getSchema(SchemaLocation.of(
+                        "https://json-schema.org/draft/2020-12/schema"));
     }
 
     @Override
@@ -86,14 +96,15 @@ public class JsonPluginSchemaProvider implements SchemaProvider {
             JsonNode schemaNode = objectMapper.readTree(is);
 
             // 转换 JSON Schema 为 ConfigSchema
+            validateSchemaDocument(schemaNode);
             ConfigSchema schema = convertJsonSchemaToConfigSchema(schemaId, schemaNode);
             if (!schema.isEmpty()) {
                 log.debug("已加载插件 JSON Schema: {} (属性数: {})", schemaId, schema.propertyCount());
             }
             return Optional.of(schema);
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             log.warn("加载 JSON Schema 失败: {} from {}", schemaId, resource, e);
-            return Optional.empty();
+            throw new IllegalArgumentException("插件配置 Schema 无效: " + schemaId, e);
         }
     }
 
@@ -111,7 +122,7 @@ public class JsonPluginSchemaProvider implements SchemaProvider {
 
         JsonNode propsNode = schemaNode.get("properties");
         if (propsNode == null || !propsNode.isObject()) {
-            return ConfigSchema.empty(schemaId);
+            return ConfigSchema.fromDocument(schemaId, schemaNode, Map.of());
         }
 
         // 收集 required 字段列表
@@ -133,7 +144,69 @@ public class JsonPluginSchemaProvider implements SchemaProvider {
             properties.put(key, property);
         }
 
-        return new ConfigSchema(schemaId, properties);
+        return ConfigSchema.fromDocument(schemaId, schemaNode, properties);
+    }
+
+    private void validateSchemaDocument(JsonNode schemaNode) {
+        if (schemaNode == null || !schemaNode.isObject()) {
+            throw new IllegalArgumentException("Schema 根节点必须是对象");
+        }
+        JsonNode dialect = schemaNode.get("$schema");
+        if (dialect == null || !dialect.isTextual()
+                || !"https://json-schema.org/draft/2020-12/schema".equals(dialect.asText())) {
+            throw new IllegalArgumentException("仅支持 JSON Schema Draft 2020-12");
+        }
+        Set<com.networknt.schema.ValidationMessage> metaErrors = metaSchema.validate(schemaNode);
+        if (!metaErrors.isEmpty()) {
+            throw new IllegalArgumentException("Schema 未通过 Draft 2020-12 meta-schema 校验");
+        }
+        validateReferences(schemaNode, 0);
+        validateSensitiveDefaults(schemaNode, schemaNode, false, new HashSet<>(), 0);
+    }
+
+    private void validateReferences(JsonNode node, int depth) {
+        if (depth > 64) {
+            throw new IllegalArgumentException("Schema 嵌套层级超过限制");
+        }
+        if (node.isObject()) {
+            JsonNode reference = node.get("$ref");
+            if (reference != null && (!reference.isTextual() || !reference.asText().startsWith("#"))) {
+                throw new IllegalArgumentException("Schema 仅允许本地 $ref");
+            }
+            node.elements().forEachRemaining(child -> validateReferences(child, depth + 1));
+        } else if (node.isArray()) {
+            node.elements().forEachRemaining(child -> validateReferences(child, depth + 1));
+        }
+    }
+
+    private void validateSensitiveDefaults(JsonNode root,
+                                           JsonNode node,
+                                           boolean inheritedSensitive,
+                                           Set<String> visitedReferences,
+                                           int depth) {
+        if (node == null || depth > 64) {
+            return;
+        }
+        if (node.isObject()) {
+            boolean sensitive = inheritedSensitive
+                    || node.path("writeOnly").asBoolean(false)
+                    || node.path("x-ui-options").path("sensitive").asBoolean(false);
+            if (sensitive && (node.has("default") || node.has("const")
+                    || node.has("enum") || node.has("examples"))) {
+                throw new IllegalArgumentException("敏感字段不得声明 default/const/enum/examples");
+            }
+            JsonNode reference = node.path("$ref");
+            if (sensitive && reference.isTextual() && reference.asText().startsWith("#")
+                    && visitedReferences.add(reference.asText())) {
+                validateSensitiveDefaults(root, root.at(reference.asText().substring(1)),
+                        true, visitedReferences, depth + 1);
+            }
+            node.elements().forEachRemaining(child -> validateSensitiveDefaults(
+                    root, child, sensitive, visitedReferences, depth + 1));
+        } else if (node.isArray()) {
+            node.elements().forEachRemaining(child -> validateSensitiveDefaults(
+                    root, child, inheritedSensitive, visitedReferences, depth + 1));
+        }
     }
 
     /**

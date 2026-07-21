@@ -68,23 +68,6 @@ public enum StatusCodes implements StatusCode {
     /** 插件已存在。 */
     PLUGIN_ALREADY_EXISTS(2006, "插件已存在"),
 
-    // ==================== 配置相关 (3xxx) ====================
-
-    /** 配置项不存在。 */
-    CONFIG_NOT_FOUND(3001, "配置项不存在"),
-
-    /** 配置值不合法。 */
-    CONFIG_VALUE_INVALID(3002, "配置值不合法"),
-
-    /** 配置 Schema 无效。 */
-    CONFIG_SCHEMA_INVALID(3003, "配置 Schema 无效"),
-
-    /** 配置域不存在。 */
-    CONFIG_SCOPE_NOT_FOUND(3004, "配置域不存在"),
-
-    /** 配置项为只读。 */
-    CONFIG_READ_ONLY(3005, "配置项为只读"),
-
     // ==================== 系统相关 (4xxx) ====================
 
     /** 系统不可用。 */

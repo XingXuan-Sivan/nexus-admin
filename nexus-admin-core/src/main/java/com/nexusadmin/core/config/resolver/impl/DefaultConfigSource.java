@@ -1,6 +1,11 @@
 package com.nexusadmin.core.config.resolver.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nexusadmin.core.config.ConfigScopeIds;
 import com.nexusadmin.core.config.resolver.ConfigSource;
+import com.nexusadmin.core.config.schema.ConfigSchema;
+import com.nexusadmin.core.config.schema.SchemaRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -11,6 +16,9 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.LinkedHashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -40,6 +48,8 @@ public class DefaultConfigSource implements ConfigSource {
      * 类加载器提供者，用于加载插件资源。
      */
     private final ClassLoaderProvider classLoaderProvider;
+    private final SchemaRegistry schemaRegistry;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 类加载器提供者接口。
@@ -61,20 +71,25 @@ public class DefaultConfigSource implements ConfigSource {
      * @param classLoaderProvider 类加载器提供者
      */
     public DefaultConfigSource(ClassLoaderProvider classLoaderProvider) {
+        this(classLoaderProvider, null);
+    }
+
+    public DefaultConfigSource(ClassLoaderProvider classLoaderProvider,
+                               SchemaRegistry schemaRegistry) {
         this.classLoaderProvider = classLoaderProvider;
+        this.schemaRegistry = schemaRegistry;
     }
 
     @Override
     public Optional<String> get(String scope, String key) {
-        // 只处理插件私有配置，scope 即为 pluginId
-        if (scope.startsWith("platform")) {
-            return Optional.empty();
-        }
+        return getObject(scope, key).map(Object::toString);
+    }
 
-        String pluginId = scope;
-        Map<String, Object> config = loadConfig(pluginId);
+    @Override
+    public Optional<Object> getObject(String scope, String key) {
+        Map<String, Object> config = loadConfig(scope);
         Object value = getNestedValue(config, key);
-        return value != null ? Optional.of(value.toString()) : Optional.empty();
+        return Optional.ofNullable(value);
     }
 
     @Override
@@ -87,6 +102,11 @@ public class DefaultConfigSource implements ConfigSource {
         return "Default";
     }
 
+    @Override
+    public String sourceType() {
+        return "default";
+    }
+
     /**
      * 获取指定插件的完整默认配置。
      *
@@ -95,6 +115,42 @@ public class DefaultConfigSource implements ConfigSource {
      */
     public Map<String, Object> getConfigMap(String pluginId) {
         return Collections.unmodifiableMap(loadConfig(pluginId));
+    }
+
+    /** 注册插件类加载器并清除相应默认配置缓存。 */
+    public void registerClassLoader(String pluginId, ClassLoader classLoader) {
+        if (classLoaderProvider instanceof MutableClassLoaderProvider mutable) {
+            mutable.register(pluginId, classLoader);
+            invalidateCache(pluginId);
+        }
+    }
+
+    /** 注销插件类加载器。 */
+    public void unregisterClassLoader(String pluginId) {
+        if (classLoaderProvider instanceof MutableClassLoaderProvider mutable) {
+            mutable.unregister(pluginId);
+            invalidateCache(pluginId);
+        }
+    }
+
+    /** 可由运行时共享的可变类加载器注册表。 */
+    public static final class MutableClassLoaderProvider implements ClassLoaderProvider {
+        private final Map<String, ClassLoader> classLoaders = new ConcurrentHashMap<>();
+
+        @Override
+        public ClassLoader getClassLoader(String pluginId) {
+            return classLoaders.get(pluginId);
+        }
+
+        public void register(String pluginId, ClassLoader classLoader) {
+            if (classLoader != null) {
+                classLoaders.put(pluginId, classLoader);
+            }
+        }
+
+        public void unregister(String pluginId) {
+            classLoaders.remove(pluginId);
+        }
     }
 
     /**
@@ -125,27 +181,111 @@ public class DefaultConfigSource implements ConfigSource {
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object> loadFromPlugin(String pluginId) {
+        Map<String, Object> defaults = schemaDefaults(pluginId);
+        if (ConfigScopeIds.isPlatform(pluginId)) {
+            return new ConcurrentHashMap<>(defaults);
+        }
         ClassLoader classLoader = classLoaderProvider.getClassLoader(pluginId);
         if (classLoader == null) {
-            return new ConcurrentHashMap<>();
+            return new ConcurrentHashMap<>(defaults);
         }
 
         URL resource = classLoader.getResource(DEFAULT_CONFIG_PATH);
         if (resource == null) {
-            return new ConcurrentHashMap<>();
+            return new ConcurrentHashMap<>(defaults);
         }
 
         try (InputStream is = resource.openStream()) {
             Map<String, Object> loaded = yaml.loadAs(is, Map.class);
             if (loaded == null) {
-                return new ConcurrentHashMap<>();
+                return new ConcurrentHashMap<>(defaults);
             }
             log.debug("已加载插件默认配置: {} from {}", pluginId, resource);
-            return new ConcurrentHashMap<>(loaded);
+            return new ConcurrentHashMap<>(deepMerge(defaults, stringKeyMap(loaded)));
         } catch (IOException e) {
             log.warn("加载插件默认配置失败: {}", pluginId, e);
-            return new ConcurrentHashMap<>();
+            return new ConcurrentHashMap<>(defaults);
         }
+    }
+
+    private Map<String, Object> schemaDefaults(String pluginId) {
+        if (schemaRegistry == null) {
+            return new LinkedHashMap<>();
+        }
+        return schemaRegistry.get(pluginId)
+                .map(ConfigSchema::document)
+                .map(document -> objectDefaults(document, document, new HashSet<>(), 0))
+                .orElseGet(LinkedHashMap::new);
+    }
+
+    private Map<String, Object> objectDefaults(JsonNode root,
+                                               JsonNode definition,
+                                               Set<String> referenceStack,
+                                               int depth) {
+        if (definition == null || depth > 64) {
+            return new LinkedHashMap<>();
+        }
+        JsonNode node = definition;
+        JsonNode reference = node.path("$ref");
+        String referenceText = reference.isTextual() ? reference.asText() : null;
+        if (referenceText != null && referenceText.startsWith("#")
+                && referenceStack.add(referenceText)) {
+            node = root.at(referenceText.substring(1));
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        JsonNode properties = node.path("properties");
+        if (properties.isObject()) {
+            properties.fields().forEachRemaining(entry -> {
+                Object value = defaultValue(root, entry.getValue(),
+                        new HashSet<>(referenceStack), depth + 1);
+                if (value != null) {
+                    result.put(entry.getKey(), value);
+                }
+            });
+        }
+        return result;
+    }
+
+    private Object defaultValue(JsonNode root,
+                                JsonNode definition,
+                                Set<String> referenceStack,
+                                int depth) {
+        if (definition == null || depth > 64) {
+            return null;
+        }
+        JsonNode node = definition;
+        JsonNode reference = node.path("$ref");
+        if (reference.isTextual() && reference.asText().startsWith("#")
+                && referenceStack.add(reference.asText())) {
+            node = root.at(reference.asText().substring(1));
+        }
+        if (node.has("default")) {
+            return objectMapper.convertValue(node.get("default"), Object.class);
+        }
+        Map<String, Object> nested = objectDefaults(root, node, referenceStack, depth + 1);
+        return nested.isEmpty() ? null : nested;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> deepMerge(Map<String, Object> base, Map<String, Object> override) {
+        Map<String, Object> result = new LinkedHashMap<>(base);
+        override.forEach((key, value) -> {
+            Object existing = result.get(key);
+            if (existing instanceof Map<?, ?> existingMap && value instanceof Map<?, ?> valueMap) {
+                result.put(key, deepMerge((Map<String, Object>) existingMap,
+                        (Map<String, Object>) valueMap));
+            } else {
+                result.put(key, value);
+            }
+        });
+        return result;
+    }
+
+    private Map<String, Object> stringKeyMap(Map<?, ?> source) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        source.forEach((key, value) -> result.put(String.valueOf(key),
+                value instanceof Map<?, ?> nested ? stringKeyMap(nested) : value));
+        return result;
     }
 
     /**

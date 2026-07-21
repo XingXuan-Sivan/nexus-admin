@@ -247,7 +247,8 @@ public class JsonPluginDescriptorParser implements PluginDescriptorParser {
                     obj.getString("icon", ""),
                     obj.getString("parentId", ""),
                     obj.getInt("order", 0),
-                    obj.getString("route", "")
+                    obj.getString("route", ""),
+                    parseStringList(obj.get("permissions"))
             ));
         }
         return menus;

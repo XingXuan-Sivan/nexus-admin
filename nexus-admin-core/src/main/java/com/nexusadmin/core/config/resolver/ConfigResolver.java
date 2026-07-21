@@ -78,8 +78,7 @@ public class ConfigResolver {
             try {
                 Optional<String> value = source.get(scope, key);
                 if (value.isPresent()) {
-                    log.trace("配置已解析 [{}]: {}.{} = {}",
-                            source.name(), scope, key, value.get());
+                    log.trace("配置已解析 [{}]: {}.{}", source.name(), scope, key);
                     return value;
                 }
             } catch (Exception e) {
@@ -89,6 +88,39 @@ public class ConfigResolver {
         }
 
         log.trace("配置未找到: {}.{}", scope, key);
+        return Optional.empty();
+    }
+
+    /**
+     * 解析保留原生类型及来源的配置值。
+     *
+     * @param scope 配置域
+     * @param key   点分隔键名
+     * @return 解析结果
+     */
+    public Optional<ResolvedConfigValue> resolveWithSource(String scope, String key) {
+        return resolveBeforePriority(scope, key, Integer.MAX_VALUE);
+    }
+
+    /** 解析优先级小于指定上限的外部覆盖值。 */
+    public Optional<ResolvedConfigValue> resolveBeforePriority(String scope,
+                                                               String key,
+                                                               int exclusivePriority) {
+        Objects.requireNonNull(scope, "作用域不能为空");
+        Objects.requireNonNull(key, "键名不能为空");
+        for (ConfigSource source : sources) {
+            if (source.priority() >= exclusivePriority) {
+                continue;
+            }
+            try {
+                Optional<Object> value = source.getObject(scope, key);
+                if (value.isPresent()) {
+                    return Optional.of(new ResolvedConfigValue(value.get(), source.sourceType()));
+                }
+            } catch (Exception e) {
+                log.warn("配置源解析失败 [{}]: {}.{}", source.name(), scope, key, e);
+            }
+        }
         return Optional.empty();
     }
 

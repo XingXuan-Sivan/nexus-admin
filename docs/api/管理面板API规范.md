@@ -98,8 +98,11 @@ Authorization: Bearer {accessToken}
 | 插件管理 | `plugins.upload` | 上传安装插件 |
 | 配置管理 | `config.view` | 查看配置值与 Schema |
 | 配置管理 | `config.manage` | 修改与重置配置 |
+| 配置密钥 | `config.secret.rotate` | 替换或清除敏感配置值；不授予读取明文能力 |
+| 配置文档 | `config.document.view` | 查看受控原始配置文档；敏感域只返回脱敏状态 |
+| 配置文档 | `config.document.manage` | 校验、保存不含敏感字段的原始配置文档 |
 | 系统状态 | `system.view` | 查看系统状态与端点列表 |
-| UI 元数据 | `ui.view` | 查看菜单、路由等 UI 资源 |
+| UI 元数据 | `*`（仅认证） | 查看菜单、路由等 UI 资源 |
 | 用户管理 | `users.view` | 查看用户列表 |
 | 用户管理 | `users.manage` | 创建、修改、删除用户 |
 | 角色管理 | `roles.view` | 查看角色列表 |
@@ -166,34 +169,30 @@ Authorization: Bearer {accessToken}
 
 ### 3.4 错误响应
 
-> **RFC 7807 兼容说明**：平台的错误响应格式兼容 [RFC 7807 Problem Details](https://datatracker.ietf.org/doc/html/rfc7807) 核心字段映射：
-> - `type` → `code`（错误类型标识，平台使用数值状态码）
-> - `title` → `message`（人类可读的错误标题）
-> - `detail` → `details`（字段级校验错误的详细信息数组）
->
-> 客户端可按 RFC 7807 语义解析平台错误响应。
-
-**普通错误**：
+错误响应使用 `application/problem+json`，字段遵循 Problem Details 语义。`errorCode` 的 JSON 类型始终为字符串；配置中心使用稳定符号码，尚未迁移的模块把原数字码序列化为字符串。`traceId` 始终存在，客户端可用于日志关联。
 
 ```json
 {
-  "code": 404,
-  "message": "资源不存在"
+  "type": "urn:nexus-admin:problem:config-validation",
+  "title": "配置校验失败",
+  "status": 422,
+  "detail": "配置值不符合 Schema",
+  "instance": "/admin/v1/config/demo-plugin",
+  "errorCode": "CONFIG_VALIDATION_FAILED",
+  "traceId": "6d0cc6bb-9340-49aa-bc0a-f805eddb9a52",
+  "scopeId": "demo-plugin",
+  "fieldErrors": [{
+    "path": "/maxItems",
+    "keyword": "maximum",
+    "messageKey": "configuration.validation.maximum",
+    "params": { "limit": 1000 },
+    "line": null,
+    "column": null
+  }]
 }
 ```
 
-**字段级校验错误**（含 `details` 数组）：
-
-```json
-{
-  "code": 400,
-  "message": "请求参数错误",
-  "details": [
-    { "field": "username", "message": "用户名不能为空" },
-    { "field": "password", "message": "密码长度不能少于6位" }
-  ]
-}
-```
+`fieldErrors` 仅包含 `path/keyword/messageKey/params/line/column`，不得返回 rejected value 或把服务端原始异常消息作为字段值。revision 冲突额外返回 `currentRevision`。
 
 ### 3.5 错误码体系
 
@@ -204,10 +203,11 @@ Authorization: Bearer {accessToken}
 | 200-299 | 通用成功 | 200 操作成功、201 创建成功 |
 | 400-499 | 客户端错误 | 400 参数错误、401 未认证、403 无权限、404 资源不存在 |
 | 500-599 | 服务端错误 | 500 服务器内部错误 |
-| 1000-1999 | 插件管理模块 | 1001 插件不存在、1002 插件状态不允许该操作、1003 插件启动失败 |
-| 2000-2999 | 配置管理模块 | 2001 配置项不存在、2002 配置值校验失败 |
-| 3000-3999 | 认证授权模块 | 3001 用户名或密码错误、3002 Token 已过期、3003 账户已锁定 |
-| 4000-4999 | 用户管理模块 | 4001 用户已存在、4002 角色不存在 |
+| 1000-1999 | 认证授权模块 | 1001 认证失败、1002 Token 已过期、1004 权限不足 |
+| 2000-2999 | 插件管理模块 | 2001 插件不存在、2002 插件状态不合法、2004 插件加载失败 |
+| 稳定字符串 | 配置管理模块 | `CONFIG_VALIDATION_FAILED`、`CONFIG_DOMAIN_NOT_FOUND`、`CONFIG_REVISION_CONFLICT`、`CONFIG_DOCUMENT_TOO_LARGE` |
+| 4000-4999 | 系统模块 | 4001 系统不可用、4002 系统维护中 |
+| 5000-5999 | 业务对象模块 | 5001 用户不存在、5003 角色不存在 |
 | 10000+ | 插件自定义 | 由各插件自行定义，需在 `plugin.yaml` 中声明 |
 
 **通用状态码**（`StatusCodes` 枚举）：
@@ -279,7 +279,7 @@ Authorization: Bearer {accessToken}
 ```json
 {
   "username": "admin",
-  "password": "admin123"
+  "password": "<bootstrap password>"
 }
 ```
 
@@ -406,14 +406,7 @@ Authorization: Bearer {accessToken}
 
 权限：`plugins.view`
 
-**查询参数**：
-
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `page` | `int` | 否 | 页码，默认 1 |
-| `size` | `int` | 否 | 每页条数，默认 20 |
-| `filter[state]` | `string` | 否 | 按状态过滤，可选值：`DISCOVERED` / `LOADED` / `INITIALIZED` / `ACTIVE` / `STOPPED` / `DISABLED` / `FAILED` |
-| `keyword` | `string` | 否 | 在 pluginId、name、description 中搜索 |
+当前端点不接收查询参数，返回全部已注册插件摘要。
 
 **响应**：
 
@@ -421,30 +414,22 @@ Authorization: Bearer {accessToken}
 {
   "code": 200,
   "message": "操作成功",
-  "data": {
-    "items": [
-      {
-        "pluginId": "demo-plugin",
-        "version": "1.0.0",
-        "name": "示例插件",
-        "description": "用于演示插件开发流程",
-        "state": "ACTIVE",
-        "provider": "Nexus"
-      },
-      {
-        "pluginId": "system-user-plugin",
-        "version": "1.0.0",
-        "name": "系统用户管理",
-        "description": "提供用户、角色、权限管理能力",
-        "state": "ACTIVE",
-        "provider": "Nexus"
-      }
-    ],
-    "total": 2,
-    "page": 1,
-    "size": 20,
-    "totalPages": 1
-  }
+  "data": [{
+    "pluginId": "demo-plugin",
+    "version": "1.0.0",
+    "name": "示例插件",
+    "description": "用于演示插件开发流程",
+    "state": "ACTIVE",
+    "provider": "Nexus",
+    "configuration": {
+      "scopeId": "demo-plugin",
+      "configurable": true,
+      "hasSchema": true,
+      "schemaStatus": "valid",
+      "canView": true,
+      "canEdit": true
+    }
+  }]
 }
 ```
 
@@ -458,6 +443,7 @@ Authorization: Bearer {accessToken}
 | `description` | `string` | 插件描述 |
 | `state` | `string` | 插件状态（PluginStateView 枚举值） |
 | `provider` | `string` | 提供者信息 |
+| `configuration` | `PluginConfigurationView` | 插件配置域与可视化配置能力；scopeId 为原始 pluginId |
 
 ---
 
@@ -498,6 +484,14 @@ Authorization: Bearer {accessToken}
     "attributes": {
       "author": "Nexus Team",
       "homepage": "https://nexusadmin.com"
+    },
+    "configuration": {
+      "scopeId": "demo-plugin",
+      "configurable": true,
+      "hasSchema": true,
+      "schemaStatus": "valid",
+      "canView": true,
+      "canEdit": true
     }
   }
 }
@@ -519,6 +513,9 @@ Authorization: Bearer {accessToken}
 | `loadedAt` | `string` | 加载时间（ISO 8601） |
 | `startedAt` | `string` | 启动时间（ISO 8601） |
 | `attributes` | `object` | 扩展属性 |
+| `configuration` | `PluginConfigurationView` | 与插件列表相同的配置能力元数据 |
+
+`PluginConfigurationView.configurable` 表示服务端存在有效 Schema；`canView/canEdit` 还会结合当前认证用户的 `config.view/config.manage` 有效权限。前端必须使用返回的 `scopeId`，不能自行拼接配置域，也不能把 capability 当作平台静态能力缓存到其他用户会话。
 
 **ExtensionView 字段**：
 
@@ -724,199 +721,168 @@ Authorization: Bearer {accessToken}
 
 ---
 
-### 5.3 配置管理 API
+### 5.3 配置中心 API
 
-基础路径：`/admin/v1/config`
+基础路径：`/admin/v1/config`。`scopeId` 是后端返回的 URL-safe opaque ID，规范为 `[a-z][a-z0-9_-]*(?:\.[a-z0-9_-]+)*` 且最长 128 个字符；插件域直接使用原始 `pluginId`，客户端不得添加 `plugin.`、`plugin:` 等前缀，也不得解析 ID 推导层级。
 
-#### GET /admin/v1/config/{scope} — 获取配置值
+所有读取 snapshot 或 document 的响应同时返回 `ETag: "{revision}"`。所有 validate、update、reset 和 document save 请求必须携带读取时得到的 `If-Match`；revision 过期返回 HTTP 409 和 `currentRevision`，服务端不会静默覆盖。
+
+#### GET /domains — 获取配置域目录
 
 权限：`config.view`
 
-`scope` 可以是 `platform`（平台配置）或具体 `pluginId`（插件配置）。
-
-**路径参数**：
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `scope` | `string` | 配置作用域，`platform` 或插件标识 |
-
-**响应**：
+响应 `Catalog`：
 
 ```json
 {
   "code": 200,
   "message": "操作成功",
   "data": {
-    "scope": "platform",
-    "values": {
-      "server.port": "8080",
-      "plugin.autoStart": "true",
-      "logging.level": "INFO"
-    }
-  }
-}
-```
-
-**错误响应**：
-
-| 状态码 | 说明 |
-|--------|------|
-| 404 | 配置作用域不存在 |
-
----
-
-#### PUT /admin/v1/config/{scope} — 更新配置
-
-权限：`config.manage`
-
-配置变更后会触发事件通知相关监听器。
-
-**路径参数**：
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `scope` | `string` | 配置作用域，`platform` 或插件标识 |
-
-**请求体**：
-
-```json
-{
-  "values": {
-    "plugin.autoStart": "false",
-    "logging.level": "DEBUG"
-  }
-}
-```
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `values` | `object` | 是 | 配置键值对映射 |
-
-**响应**：
-
-```json
-{
-  "code": 200,
-  "message": "操作成功"
-}
-```
-
-**错误响应**：
-
-| 状态码 | 说明 |
-|--------|------|
-| 404 | 配置作用域不存在 |
-| 2002 | 配置值校验失败 |
-
----
-
-#### GET /admin/v1/config/{scope}/schema — 获取配置 Schema
-
-权限：`config.view`
-
-返回配置项的元数据描述，供前端动态渲染配置表单。
-
-> **说明**：配置 Schema 采用标准 **JSON Schema（Draft 2020-12）** 格式，前端可直接使用
-> [react-jsonschema-form](https://github.com/rjsf-team/react-jsonschema-form) 等 JSON Schema 表单渲染库渲染配置表单。
->
-> 平台在标准 JSON Schema 基础上定义了以下自定义扩展关键字：
-> - `x-ui-options`：渲染提示，如 `{ "widget": "password", "sensitive": true }` 表示密码输入框且值为敏感信息
-> - `x-ui-group`：配置项分组，如 `{ "x-ui-group": "服务配置" }` 将该配置项归入"服务配置"分组
-
-**路径参数**：
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `scope` | `string` | 配置作用域，`platform` 或插件标识 |
-
-**响应**：
-
-```json
-{
-  "code": 200,
-  "message": "操作成功",
-  "data": {
-    "scope": "platform",
-    "schema": {
-      "$schema": "https://json-schema.org/draft/2020-12/schema",
-      "type": "object",
-      "title": "平台配置",
-      "properties": {
-        "server.port": {
-          "type": "integer",
-          "title": "服务端口",
-          "description": "管理面板监听端口",
-          "default": 8080,
-          "minimum": 1024,
-          "maximum": 65535,
-          "x-ui-group": "服务配置"
-        },
-        "plugin.autoStart": {
-          "type": "boolean",
-          "title": "自动启动插件",
-          "description": "平台启动时是否自动启动所有已启用的插件",
-          "default": true,
-          "x-ui-group": "插件管理"
-        },
-        "logging.level": {
-          "type": "string",
-          "title": "日志级别",
-          "description": "全局日志输出级别",
-          "enum": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"],
-          "default": "INFO",
-          "x-ui-group": "日志配置"
-        },
-        "auth.bootstrap.password": {
-          "type": "string",
-          "title": "引导认证密码",
-          "x-ui-options": { "widget": "password", "sensitive": true },
-          "x-ui-group": "认证配置"
-        }
+    "catalogRevision": "catalog-a12f",
+    "domains": [{
+      "id": "demo-plugin",
+      "parentId": null,
+      "kind": "plugin",
+      "pluginId": "demo-plugin",
+      "displayName": "演示插件",
+      "description": "演示插件配置",
+      "hasSchema": true,
+      "schemaStatus": "valid",
+      "documentFormat": "yaml",
+      "capabilities": {
+        "viewValues": true,
+        "editValues": true,
+        "resetValues": true,
+        "viewSchema": true,
+        "viewDocument": true,
+        "editDocument": true
       },
-      "required": ["server.port"]
+      "hotReload": true,
+      "restartRequired": false,
+      "revision": "cfg-8c3f...",
+      "updatedAt": null
+    }]
+  }
+}
+```
+
+明确保留的平台域为 `platform` 和 `platform.disabled`；其他 ID 一律按 opaque 插件域处理。例如插件 ID `platformer` 不属于平台域。
+
+`capabilities` 是当前认证用户的有效能力，并同时受 Schema、存储实现和敏感域安全策略约束。例如用户没有 `config.manage` 时 `editValues/resetValues=false`；没有 `config.document.manage` 或域含敏感字段时 `editDocument=false`。客户端不得跨用户会话缓存该对象，服务端也不会因为 capability 为 true 而跳过端点权限校验。
+
+#### GET /{scopeId} — 获取类型化配置快照
+
+权限：`config.view`
+
+```json
+{
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "scopeId": "demo-plugin",
+    "revision": "cfg-8c3f...",
+    "effectiveValues": { "enabled": true, "maxItems": 100 },
+    "persistedValues": { "maxItems": 100 },
+    "defaultValues": { "enabled": true, "maxItems": 50 },
+    "fieldStates": {
+      "/maxItems": {
+        "source": "file",
+        "hasEffectiveValue": true,
+        "hasPersistedValue": true,
+        "hasDefaultValue": true,
+        "persistedWritable": true,
+        "effectiveValueOverridden": false,
+        "sensitive": false,
+        "restartRequired": false,
+        "readOnlyReason": null
+      }
     }
   }
 }
 ```
 
-**错误响应**：
+来源枚举为 `environment | file | default | none`，优先级为 Environment > File > Default。值保持 JSON 原生类型。敏感路径不出现在三个 values 对象中，只通过 `fieldStates.has*Value` 表示是否已设置。
 
-| 状态码 | 说明 |
-|--------|------|
-| 404 | 配置作用域不存在或该作用域无 Schema 定义 |
+#### GET /{scopeId}/schema — 获取无损 JSON Schema
 
----
+权限：`config.view`
 
-#### POST /admin/v1/config/{scope}/reset — 重置配置为默认值
+响应字段为 `scopeId`、`schemaRevision`、`dialect` 和原始 `schema`。插件 Schema 位于 `META-INF/schema.json`，方言固定为 JSON Schema Draft 2020-12；嵌套 object/array、条件、`$defs`、本地 `$ref` 和 `x-ui-*` 扩展不会被压平。远程 `$ref` 被拒绝。
+
+敏感字段使用标准 `writeOnly: true` 或 `x-ui-options.sensitive: true`。Schema 不得包含可用的敏感 default。若 array 的 `items/prefixItems` 包含敏感字段，服务端将整个 array 视为原子敏感路径并完整省略；客户端对数组路径使用 `replace-sensitive/clear-sensitive`，不提交带数字索引的敏感子路径。
+
+#### POST /{scopeId}/validate — 校验结构化变更
 
 权限：`config.manage`
 
-**路径参数**：
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| `scope` | `string` | 配置作用域，`platform` 或插件标识 |
-
-**请求体**（可选，不传则重置所有）：
-
 ```json
 {
-  "keys": ["plugin.autoStart", "logging.level"]
+  "changes": [
+    { "op": "set", "path": "/maxItems", "value": 120 },
+    { "op": "unset", "path": "/legacyFlag" },
+    { "op": "replace-sensitive", "path": "/token", "value": "new-secret" }
+  ],
+  "reason": "调整插件策略"
 }
 ```
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `keys` | `string[]` | 否 | 需要重置的配置键列表，为空则重置全部 |
+操作为 `set | unset | replace-sensitive | clear-sensitive`，路径必须是 JSON Pointer。敏感路径只接受 `replace-sensitive/clear-sensitive`；使用普通 `set/unset` 或写入包含敏感后代的父对象会返回 400，避免绕过专用敏感操作。敏感替换和清除除 `config.manage` 外还要求 `config.secret.rotate`。响应包含 `valid`、`issues` 及 `effectivePreview`。issue 字段包括 `path/keyword/message/line/column/messageKey/params/source/severity`；当前 Schema 语义校验的 line/column 可为空，messageKey 采用 `configuration.validation.{keyword}`，message 只由 keyword 生成，params 仅含 Schema 约束且绝不含被校验值，source 为 `server`，severity 为 `error`。
 
-**响应**：
+#### PUT /{scopeId} — 原子保存结构化变更
+
+权限：`config.manage`
+
+请求体与 validate 相同。服务端分别校验 `default + persisted` 候选配置和应用外部来源后的完整有效配置，外部来源不能掩盖非法文件值；以 scope 为单次事务原子写入。任一 change 失败时不写文件、不刷新缓存、不发布成功事件。成功返回与该次提交 revision 一致的完整 snapshot 和 ETag。
+
+#### POST /{scopeId}/reset — 移除持久化覆盖
+
+权限：`config.manage`
+
+重置指定字段：
 
 ```json
-{
-  "code": 200,
-  "message": "操作成功"
-}
+{ "paths": ["/maxItems"], "all": false, "reason": "恢复默认值" }
 ```
+
+整域重置必须显式提交 `{ "paths": [], "all": true }`。空 paths 不代表整域重置。reset 只移除 File 层覆盖，使值回退到 Environment 或 Default，不会把默认值写回文件；敏感路径由服务端转换为受控 `clear-sensitive`，无需且不允许客户端借助普通 `unset` 绕过专用语义。包含敏感路径的 reset 还要求 `config.secret.rotate`。成功返回新 snapshot。
+
+#### GET /{scopeId}/document — 读取受控配置文档
+
+权限：`config.document.view`
+
+响应包含 `scopeId/displayName/format/revision/content/writable/redacted/requiresReauthentication/maxBytes`。`format` 根据当前文档内容返回 `yaml | json`，`displayName` 仅为逻辑文件名，不暴露绝对路径。
+
+若 Schema 含敏感字段，当前实现返回 `content=""`、`redacted=true`、`writable=false`。平台尚无近期重新认证机制，因此不会开放包含敏感字段的原始文档读写；敏感值只能通过结构化 replace-sensitive 操作替换且不会回显。
+
+#### POST /{scopeId}/document/validate — 校验配置文档
+
+权限：`config.document.manage`
+
+```json
+{ "format": "yaml", "content": "maxItems: 120\n", "reason": "调整插件策略" }
+```
+
+支持 YAML 与 JSON，根节点必须是对象，最大 524288 字节。响应模型与结构化 validate 相同；语法问题 keyword 为 `syntax`，Schema 问题使用 JSON Pointer 定位。
+
+#### PUT /{scopeId}/document — 原子保存配置文档
+
+权限：`config.document.manage`
+
+请求体与 document validate 相同。服务端依次执行权限与域白名单、大小限制、revision、Safe YAML/JSON 解析、Draft 2020-12 校验、同目录临时文件强制落盘、备份及原子替换。YAML/JSON 内容按提交文本原样保存，因此 YAML 注释不会因文档模式保存而丢失。成功返回 `{ document, snapshot }` 和新 ETag。
+
+#### 配置错误响应
+
+| HTTP | errorCode | 场景 |
+|---:|---|---|
+| 400 | `"400"` | 请求结构、scopeId、JSON Pointer 或操作非法 |
+| 403 | `CONFIG_PERMISSION_DENIED` 或 `"1004"` | 缺少敏感操作权限或端点权限 |
+| 404 | `CONFIG_DOMAIN_NOT_FOUND` | 配置域或 Schema 不存在 |
+| 409 | `CONFIG_REVISION_CONFLICT` | If-Match revision 冲突，响应包含 `currentRevision` |
+| 413 | `CONFIG_DOCUMENT_TOO_LARGE` | 文档超过 524288 字节 |
+| 422 | `CONFIG_VALIDATION_FAILED` | Schema 或配置语义校验失败 |
+| 423 | `CONFIG_DOCUMENT_LOCKED` | 敏感配置文档因缺少重新认证能力而锁定 |
+
+错误响应使用 `application/problem+json`，并包含字符串 `errorCode`、`traceId` 和适用时的 `scopeId/currentRevision/fieldErrors`。敏感值不会进入响应、日志、事件、校验错误或 revision 冲突信息。
 
 ---
 
@@ -1051,9 +1017,9 @@ Authorization: Bearer {accessToken}
 
 #### GET /admin/v1/ui/manifest — 聚合 UI 贡献声明
 
-权限：`ui.view`
+权限：**需认证**
 
-聚合所有活跃插件的 UI 贡献声明，包括菜单树、路由表、挂载点和权限列表。
+返回所有 ACTIVE 插件的原始 UI 贡献，以 `pluginId` 为键分组。此端点不包含平台内建菜单，也不按当前用户权限预过滤。
 
 **响应**：
 
@@ -1062,27 +1028,43 @@ Authorization: Bearer {accessToken}
   "code": 200,
   "message": "操作成功",
   "data": {
-    "menus": [ ... ],
-    "routes": [ ... ],
-    "mountPoints": {
-      "sidebar": ["demo-plugin:demo-widget"],
-      "dashboard": ["system-user-plugin:stats-card"]
-    },
-    "permissions": [
-      { "code": "plugins.view", "name": "查看插件", "resource": "plugins", "action": "view" },
-      { "code": "plugins.manage", "name": "管理插件", "resource": "plugins", "action": "manage" }
-    ]
+    "demo-plugin": {
+      "menus": [{
+        "id": "demo-menu",
+        "label": "示例功能",
+        "icon": "flask",
+        "parentId": "",
+        "order": 100,
+        "route": "/demo",
+        "permissions": ["demo.view"]
+      }],
+      "routes": [{
+        "path": "/demo",
+        "component": "demo-plugin/pages/Index",
+        "title": "示例页面",
+        "icon": "flask",
+        "permissions": ["demo.view"]
+      }],
+      "mountPoints": [],
+      "permissions": [{
+        "id": "demo.view",
+        "label": "查看示例",
+        "description": "查看示例插件页面"
+      }]
+    }
   }
 }
 ```
 
+`data` 的每个值都是 `PluginContributes`，其 `menus/routes/mountPoints/permissions` 字段始终为数组。插件未声明 `contributes` 或四类贡献均为空时，不会出现在该映射中。
+
 ---
 
-#### GET /admin/v1/ui/menus — 获取完整菜单树
+#### GET /admin/v1/ui/menus — 获取聚合菜单列表
 
-权限：`ui.view`
+权限：**需认证**
 
-获取平台内建菜单 + 插件贡献菜单，已按 `order` 排序。
+获取平台内建菜单 + ACTIVE 插件贡献菜单的扁平列表，已按 `order` 升序排序。客户端使用 `parentId` 组装层级树；顶级菜单的 `parentId` 为空字符串。
 
 **响应**：
 
@@ -1090,63 +1072,31 @@ Authorization: Bearer {accessToken}
 {
   "code": 200,
   "message": "操作成功",
-  "data": {
-    "menus": [
-      {
-        "id": "dashboard",
-        "title": "仪表盘",
-        "icon": "dashboard",
-        "path": "/dashboard",
-        "order": 0,
-        "source": "platform",
-        "children": []
-      },
-      {
-        "id": "plugins",
-        "title": "插件管理",
-        "icon": "extension",
-        "path": "/plugins",
-        "order": 10,
-        "source": "platform",
-        "children": [
-          {
-            "id": "plugins-list",
-            "title": "插件列表",
-            "path": "/plugins/list",
-            "order": 1,
-            "source": "platform",
-            "children": []
-          }
-        ]
-      },
-      {
-        "id": "system-user",
-        "title": "用户管理",
-        "icon": "people",
-        "path": "/users",
-        "order": 20,
-        "source": "system-user-plugin",
-        "children": [
-          {
-            "id": "user-list",
-            "title": "用户列表",
-            "path": "/users/list",
-            "order": 1,
-            "source": "system-user-plugin",
-            "children": []
-          },
-          {
-            "id": "role-list",
-            "title": "角色列表",
-            "path": "/users/roles",
-            "order": 2,
-            "source": "system-user-plugin",
-            "children": []
-          }
-        ]
-      }
-    ]
-  }
+  "data": [{
+    "id": "dashboard",
+    "label": "仪表盘",
+    "icon": "ri:dashboard-line",
+    "parentId": "",
+    "order": 0,
+    "route": "/dashboard",
+    "permissions": []
+  }, {
+    "id": "plugins.list",
+    "label": "插件列表",
+    "icon": "",
+    "parentId": "plugins",
+    "order": 1,
+    "route": "list",
+    "permissions": ["plugins.view"]
+  }, {
+    "id": "configuration",
+    "label": "配置中心",
+    "icon": "ri:settings-3-line",
+    "parentId": "",
+    "order": 15,
+    "route": "/configuration",
+    "permissions": ["config.view"]
+  }]
 }
 ```
 
@@ -1155,18 +1105,20 @@ Authorization: Bearer {accessToken}
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `id` | `string` | 菜单项唯一标识 |
-| `title` | `string` | 显示标题 |
+| `label` | `string` | 显示标题 |
 | `icon` | `string` | 图标标识（可选） |
-| `path` | `string` | 前端路由路径 |
+| `parentId` | `string` | 父菜单 ID；空字符串表示顶级 |
 | `order` | `int` | 排序权重，值越小越靠前 |
-| `source` | `string` | 来源（`platform` 或 `pluginId`） |
-| `children` | `object[]` | 子菜单列表 |
+| `route` | `string` | 关联路由；子菜单可使用相对父菜单的路径段 |
+| `permissions` | `string[]` | 菜单可见所需权限，列表为 AND 关系；空列表表示无额外 UI 权限限制 |
+
+`/menus` 未内嵌来源字段。如需判断插件来源，使用 `/manifest` 的 `pluginId` 分组，不得根据菜单 ID 猜测。
 
 ---
 
 #### GET /admin/v1/ui/routes — 获取路由表
 
-权限：`ui.view`
+权限：**需认证**
 
 **响应**：
 
@@ -1174,30 +1126,31 @@ Authorization: Bearer {accessToken}
 {
   "code": 200,
   "message": "操作成功",
-  "data": {
-    "routes": [
-      {
-        "path": "/dashboard",
-        "component": "DashboardPage",
-        "source": "platform",
-        "meta": { "title": "仪表盘", "requiresAuth": true }
-      },
-      {
-        "path": "/plugins/list",
-        "component": "PluginListPage",
-        "source": "platform",
-        "meta": { "title": "插件列表", "requiresAuth": true, "permission": "plugins.view" }
-      },
-      {
-        "path": "/users/list",
-        "component": "system-user-plugin/UserListPage",
-        "source": "system-user-plugin",
-        "meta": { "title": "用户列表", "requiresAuth": true, "permission": "users.view" }
-      }
-    ]
-  }
+  "data": [{
+    "path": "/dashboard",
+    "component": "DashboardPage",
+    "title": "仪表盘",
+    "icon": "ri:dashboard-line",
+    "permissions": []
+  }, {
+    "path": "/plugins/list",
+    "component": "PluginListPage",
+    "title": "插件列表",
+    "icon": "",
+    "permissions": ["plugins.view"]
+  }]
 }
 ```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `path` | `string` | 路由路径 |
+| `component` | `string` | 前端组件标识 |
+| `title` | `string` | 路由标题 |
+| `icon` | `string` | 图标标识（可选） |
+| `permissions` | `string[]` | 进入路由所需权限，列表为 AND 关系 |
+
+菜单权限只决定导航可见性，不是安全边界。可达页面应在菜单和关联路由上声明一致权限，后端业务 API 仍必须独立执行权限校验。`/manifest`、`/menus` 和 `/routes` 都返回未按当前用户权限过滤的元数据，由前端结合当前用户的有效权限列表处理。
 
 ---
 

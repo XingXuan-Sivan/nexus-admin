@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nexus-admin:config:platform",
+  "type": "object",
+  "title": "平台运行配置",
+  "additionalProperties": false,
+  "x-ui-groups": {
+    "general": { "title": "平台信息", "order": 10 },
+    "plugins": { "title": "插件策略", "order": 20 },
+    "security": { "title": "安全配置", "order": 90, "collapsible": true }
+  },
+  "properties": {
+    "coreVersion": {
+      "type": "string",
+      "title": "核心版本",
+      "description": "平台核心版本号",
+      "default": "1.0.0",
+      "readOnly": true,
+      "x-ui-group": "general"
+    },
+    "infoName": {
+      "type": "string",
+      "title": "平台名称",
+      "default": "Nexus Admin",
+      "minLength": 1,
+      "maxLength": 80,
+      "x-ui-group": "general"
+    },
+    "infoVersion": {
+      "type": "string",
+      "title": "平台版本",
+      "default": "0.1.0-SNAPSHOT",
+      "readOnly": true,
+      "x-ui-group": "general"
+    },
+    "infoDescription": {
+      "type": "string",
+      "title": "平台描述",
+      "default": "插件化系统拓展平台",
+      "maxLength": 500,
+      "x-ui-group": "general",
+      "x-ui-options": { "widget": "textarea", "span": 24 }
+    },
+    "maxConcurrentPlugins": {
+      "type": "integer",
+      "title": "最大并发插件数",
+      "default": 50,
+      "minimum": 1,
+      "maximum": 500,
+      "x-ui-group": "plugins",
+      "x-ui-options": { "widget": "slider" }
+    },
+    "autoStart": {
+      "type": "boolean",
+      "title": "自动启动插件",
+      "default": true,
+      "x-ui-group": "plugins",
+      "x-ui-options": { "widget": "switch" }
+    },
+    "logLevel": {
+      "type": "string",
+      "title": "日志级别",
+      "enum": ["DEBUG", "INFO", "WARN", "ERROR"],
+      "default": "INFO",
+      "x-ui-group": "plugins",
+      "x-ui-options": { "widget": "select" }
+    },
+    "bootstrapUsername": {
+      "type": "string",
+      "title": "引导认证管理员用户名",
+      "minLength": 1,
+      "maxLength": 80,
+      "x-ui-group": "security"
+    },
+    "bootstrapPassword": {
+      "type": "string",
+      "title": "引导认证管理员密码",
+      "writeOnly": true,
+      "minLength": 12,
+      "x-ui-group": "security",
+      "x-ui-options": { "widget": "password", "sensitive": true }
+    }
+  }
+}

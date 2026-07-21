@@ -26,87 +26,87 @@ public class DefaultUIContributionRegistry implements UIContributionRegistry {
 
     /** 平台内建菜单：仪表盘 */
     private static final MenuContribution MENU_DASHBOARD = new MenuContribution(
-            "dashboard", "仪表盘", "ri:dashboard-line", "", 0, "/dashboard"
+            "dashboard", "仪表盘", "ri:dashboard-line", "", 0, "/dashboard", List.of()
     );
 
     /** 平台内建菜单：Nexus Copilot（叶子菜单） */
     private static final MenuContribution MENU_NEXUS_COPILOT = new MenuContribution(
-            "nexus-copilot", "Nexus Copilot", "ri:robot-2-line", "", 5, "/nexus-copilot"
+            "nexus-copilot", "Nexus Copilot", "ri:robot-2-line", "", 5, "/nexus-copilot", List.of()
     );
 
     /** 平台内建菜单：插件管理（分组目录） */
     private static final MenuContribution MENU_PLUGINS = new MenuContribution(
-            "plugins", "插件管理", "ri:plug-line", "", 10, "/plugins"
+            "plugins", "插件管理", "ri:plug-line", "", 10, "/plugins", List.of()
     );
 
     /** 平台内建菜单：插件列表（子菜单） */
     private static final MenuContribution MENU_PLUGINS_LIST = new MenuContribution(
-            "plugins.list", "插件列表", "", "plugins", 1, "list"
+            "plugins.list", "插件列表", "", "plugins", 1, "list", List.of("plugins.view")
     );
 
-    /** 平台内建菜单：配置管理（子菜单） */
-    private static final MenuContribution MENU_PLUGINS_CONFIG = new MenuContribution(
-            "plugins.config", "配置管理", "", "plugins", 2, "config"
+    /** 平台内建菜单：配置中心（顶层叶子菜单） */
+    private static final MenuContribution MENU_CONFIGURATION = new MenuContribution(
+            "configuration", "配置中心", "ri:settings-3-line", "", 15, "/configuration", List.of("config.view")
     );
 
     /** 平台内建菜单：AI 管理（分组目录） */
     private static final MenuContribution MENU_AI_MANAGEMENT = new MenuContribution(
-            "ai-management", "AI 管理", "ri:brain-line", "", 20, "/ai"
+            "ai-management", "AI 管理", "ri:brain-line", "", 20, "/ai", List.of()
     );
 
     /** 平台内建菜单：模型管理（子菜单，mock 先行） */
     private static final MenuContribution MENU_AI_MODELS = new MenuContribution(
-            "ai.models", "模型管理", "", "ai-management", 1, "models"
+            "ai.models", "模型管理", "", "ai-management", 1, "models", List.of("ai.view")
     );
 
     /** 平台内建菜单：MCP 客户端管理（子菜单） */
     private static final MenuContribution MENU_AI_MCP_CLIENTS = new MenuContribution(
-            "ai.mcp-clients", "MCP 客户端管理", "", "ai-management", 2, "mcp-clients"
+            "ai.mcp-clients", "MCP 客户端管理", "", "ai-management", 2, "mcp-clients", List.of("ai.view")
     );
 
     /** 平台内建菜单：存储管理（分组目录，mock 先行） */
     private static final MenuContribution MENU_STORAGE_MANAGEMENT = new MenuContribution(
-            "storage-management", "存储管理", "ri:hard-drive-2-line", "", 30, "/storage"
+            "storage-management", "存储管理", "ri:hard-drive-2-line", "", 30, "/storage", List.of()
     );
 
     /** 平台内建菜单：缓存管理（子菜单，mock 先行） */
     private static final MenuContribution MENU_STORAGE_CACHE = new MenuContribution(
-            "storage.cache", "缓存管理", "", "storage-management", 1, "cache"
+            "storage.cache", "缓存管理", "", "storage-management", 1, "cache", List.of("storage.view")
     );
 
     /** 平台内建菜单：存储方式管理（子菜单，mock 先行） */
     private static final MenuContribution MENU_STORAGE_METHODS = new MenuContribution(
-            "storage.methods", "存储方式管理", "", "storage-management", 2, "methods"
+            "storage.methods", "存储方式管理", "", "storage-management", 2, "methods", List.of("storage.view")
     );
 
     /** 平台内建菜单：日志管理（分组目录） */
     private static final MenuContribution MENU_LOGS_MANAGEMENT = new MenuContribution(
-            "logs-management", "日志管理", "ri:file-list-3-line", "", 40, "/logs"
+            "logs-management", "日志管理", "ri:file-list-3-line", "", 40, "/logs", List.of()
     );
 
     /** 平台内建菜单：登录日志（子菜单） */
     private static final MenuContribution MENU_LOGS_LOGIN = new MenuContribution(
-            "logs.login", "登录日志", "", "logs-management", 1, "login"
+            "logs.login", "登录日志", "", "logs-management", 1, "login", List.of("logs.view")
     );
 
     /** 平台内建菜单：操作日志（子菜单） */
     private static final MenuContribution MENU_LOGS_OPERATION = new MenuContribution(
-            "logs.operation", "操作日志", "", "logs-management", 2, "operation"
+            "logs.operation", "操作日志", "", "logs-management", 2, "operation", List.of("logs.view")
     );
 
     /** 平台内建菜单：任务日志（子菜单，mock 先行） */
     private static final MenuContribution MENU_LOGS_TASK = new MenuContribution(
-            "logs.task", "任务日志", "", "logs-management", 3, "task"
+            "logs.task", "任务日志", "", "logs-management", 3, "task", List.of("logs.view")
     );
 
     /** 平台内建菜单：接口文档（叶子菜单，iframe 嵌入） */
     private static final MenuContribution MENU_API_DOCS = new MenuContribution(
-            "api-docs", "接口文档", "ri:book-open-line", "", 50, "/api-docs"
+            "api-docs", "接口文档", "ri:book-open-line", "", 50, "/api-docs", List.of()
     );
 
     /** 平台内建菜单：业务管理（分组目录，不可点击） */
     private static final MenuContribution MENU_BUSINESS = new MenuContribution(
-            "business", "业务管理", "ri:briefcase-line", "", 60, "/business"
+            "business", "业务管理", "ri:briefcase-line", "", 60, "/business", List.of()
     );
 
     /** 平台内建菜单列表 */
@@ -117,7 +117,7 @@ public class DefaultUIContributionRegistry implements UIContributionRegistry {
             // 插件管理（分组 + 子菜单）
             MENU_PLUGINS,
             MENU_PLUGINS_LIST,
-            MENU_PLUGINS_CONFIG,
+            MENU_CONFIGURATION,
             // AI 管理（分组 + 子菜单，mock 先行）
             MENU_AI_MANAGEMENT,
             MENU_AI_MODELS,
@@ -142,7 +142,7 @@ public class DefaultUIContributionRegistry implements UIContributionRegistry {
             new RouteContribution("/dashboard", "DashboardPage", "仪表盘", "ri:dashboard-line", List.of()),
             new RouteContribution("/nexus-copilot", "NexusCopilotPage", "Nexus Copilot", "ri:robot-2-line", List.of()),
             new RouteContribution("/plugins/list", "PluginListPage", "插件列表", "", List.of("plugins.view")),
-            new RouteContribution("/plugins/config", "PluginConfigPage", "配置管理", "", List.of("config.view")),
+            new RouteContribution("/configuration", "ConfigurationPage", "配置中心", "ri:settings-3-line", List.of("config.view")),
             new RouteContribution("/ai/models", "AiModelsPage", "模型管理", "", List.of("ai.view")),
             new RouteContribution("/ai/mcp-clients", "AiMcpClientsPage", "MCP 客户端管理", "", List.of("ai.view")),
             new RouteContribution("/storage/cache", "StorageCachePage", "缓存管理", "", List.of("storage.view")),

@@ -1,12 +1,16 @@
 package com.nexusadmin.api.service;
 
+import com.nexusadmin.api.auth.PermissionAccess;
 import com.nexusadmin.api.domain.view.PluginDetailView;
 import com.nexusadmin.api.domain.view.PluginStateView;
 import com.nexusadmin.api.domain.view.PluginView;
+import com.nexusadmin.api.domain.view.PluginConfigurationView;
 import com.nexusadmin.api.exception.PluginOperationException;
 import com.nexusadmin.api.service.IPluginStateStore.PluginStateRecord;
 import com.nexusadmin.core.PluginManager;
 import com.nexusadmin.core.PluginState;
+import com.nexusadmin.core.config.ConfigManager;
+import com.nexusadmin.core.runtime.ConfigRuntime;
 import com.nexusadmin.core.plugin.loader.PluginWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +39,9 @@ public class PluginService {
     private final PluginManager pluginManager;
     private final com.nexusadmin.core.facade.PluginFacade pluginFacade;
     private final IPluginStateStore stateStore;
+    private final ConfigManager configManager;
+    private final PermissionAccess permissionAccess;
+    private final ConfigRuntime configRuntime;
 
     /**
      * 构造插件管理服务。
@@ -45,10 +52,16 @@ public class PluginService {
      */
     public PluginService(PluginManager pluginManager,
                          com.nexusadmin.core.facade.PluginFacade pluginFacade,
-                         @Nullable IPluginStateStore stateStore) {
+                         @Nullable IPluginStateStore stateStore,
+                         ConfigManager configManager,
+                         ConfigRuntime configRuntime,
+                         PermissionAccess permissionAccess) {
         this.pluginManager = pluginManager;
         this.pluginFacade = pluginFacade;
         this.stateStore = stateStore;
+        this.configManager = configManager;
+        this.configRuntime = configRuntime;
+        this.permissionAccess = permissionAccess;
     }
 
     /**
@@ -218,7 +231,8 @@ public class PluginService {
                 wrapper.descriptor().name(),
                 wrapper.descriptor().description(),
                 toStateView(wrapper.state()),
-                wrapper.descriptor().author()
+                wrapper.descriptor().author(),
+                configuration(wrapper.getPluginId())
         );
     }
 
@@ -250,7 +264,21 @@ public class PluginService {
                 List.of(),
                 null,
                 null,
-                metadata
+                metadata,
+                configuration(wrapper.getPluginId())
+        );
+    }
+
+    private PluginConfigurationView configuration(String pluginId) {
+        boolean hasSchema = configManager.getSchema(pluginId).isPresent();
+        String schemaStatus = configRuntime.schemaRegistry().state(pluginId).status();
+        return new PluginConfigurationView(
+                pluginId,
+                hasSchema,
+                hasSchema,
+                schemaStatus,
+                hasSchema && permissionAccess.currentUserHas("config.view"),
+                hasSchema && permissionAccess.currentUserHas("config.manage")
         );
     }
 

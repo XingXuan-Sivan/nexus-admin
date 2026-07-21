@@ -21,6 +21,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.ReentrantLock;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.nexusadmin.core.config.resolver.impl.DefaultConfigSource;
 
 /**
  * 默认配置管理器实现，配置中心的统一入口。
@@ -74,6 +77,9 @@ public class DefaultConfigManager implements ConfigManager {
      * 插件类加载器缓存。
      */
     private final Map<String, ClassLoader> pluginClassLoaders = new ConcurrentHashMap<>();
+
+    /** Serializes one scope mutation through cache invalidation and event publication. */
+    private final Map<String, ReentrantLock> mutationLocks = new ConcurrentHashMap<>();
 
     /**
      * 构造默认配置管理器。
@@ -135,13 +141,16 @@ public class DefaultConfigManager implements ConfigManager {
             Object result = convertValue(strValue, type);
             return Optional.ofNullable((T) result);
         } catch (Exception e) {
-            log.warn("配置值转换失败: {}.{} = {} to {}", scope, key, strValue, type.getSimpleName());
+            log.warn("配置值转换失败: {}.{} to {}", scope, key, type.getSimpleName());
             return Optional.empty();
         }
     }
 
     @Override
     public void set(String scope, String key, String value) {
+        ReentrantLock lock = mutationLock(scope);
+        lock.lock();
+        try {
         Objects.requireNonNull(scope, "作用域不能为空");
         Objects.requireNonNull(key, "键名不能为空");
 
@@ -155,13 +164,18 @@ public class DefaultConfigManager implements ConfigManager {
         resolver.invalidateCache(scope);
 
         // 发布事件
-        ConfigChangedEvent event = new ConfigChangedEvent(scope, key, value, oldValue);
+        boolean sensitive = isSensitive(scope, key);
+        ConfigChangedEvent event = new ConfigChangedEvent(scope, key,
+                sensitive ? null : value, sensitive ? null : oldValue, sensitive);
         eventBus.publish(event);
 
         // 通知监听器
         notifyListeners(event);
 
-        log.debug("配置已更新: {}.{} = {} (旧值: {})", scope, key, value, oldValue);
+        log.debug("配置已更新: {}.{}", scope, key);
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
@@ -180,6 +194,9 @@ public class DefaultConfigManager implements ConfigManager {
 
     @Override
     public void remove(String scope, String key) {
+        ReentrantLock lock = mutationLock(scope);
+        lock.lock();
+        try {
         Objects.requireNonNull(scope, "作用域不能为空");
         Objects.requireNonNull(key, "键名不能为空");
 
@@ -193,13 +210,73 @@ public class DefaultConfigManager implements ConfigManager {
         resolver.invalidateCache(scope);
 
         // 发布事件
-        ConfigChangedEvent event = new ConfigChangedEvent(scope, key, null, oldValue);
+        boolean sensitive = isSensitive(scope, key);
+        ConfigChangedEvent event = new ConfigChangedEvent(scope, key, null,
+                sensitive ? null : oldValue, sensitive);
         eventBus.publish(event);
 
         // 通知监听器
         notifyListeners(event);
 
-        log.debug("配置已删除: {}.{} (旧值: {})", scope, key, oldValue);
+        log.debug("配置已删除: {}.{}", scope, key);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public String replaceScope(String scope,
+                               Map<String, Object> values,
+                               String expectedRevision,
+                               Set<String> changedPaths) {
+        ReentrantLock lock = mutationLock(scope);
+        lock.lock();
+        try {
+        Objects.requireNonNull(scope, "作用域不能为空");
+        Objects.requireNonNull(values, "配置值不能为空");
+        Set<String> paths = changedPaths == null ? Set.of() : Set.copyOf(changedPaths);
+        Map<String, Object> previous = configStore.getScope(scope);
+        String revision = configStore.replaceScope(scope, values, expectedRevision);
+        publishScopeChanges(scope, previous, values, paths);
+        log.debug("配置域已更新: scope={}, changedPaths={}, revision={}",
+                scope, paths.size(), revision);
+        return revision;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public String replaceDocument(String scope,
+                                  String format,
+                                  String content,
+                                  String expectedRevision,
+                                  Set<String> changedPaths) {
+        ReentrantLock lock = mutationLock(scope);
+        lock.lock();
+        try {
+        Objects.requireNonNull(scope, "作用域不能为空");
+        Map<String, Object> previous = configStore.getScope(scope);
+        String revision = configStore.replaceDocument(scope, format, content, expectedRevision);
+        Map<String, Object> current = configStore.getScope(scope);
+        Set<String> paths = changedPaths == null ? Set.of() : Set.copyOf(changedPaths);
+        publishScopeChanges(scope, previous, current, paths);
+        log.debug("配置文档已更新: scope={}, changedPaths={}, revision={}",
+                scope, paths.size(), revision);
+        return revision;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public Map<String, Object> getPersistedScope(String scope) {
+        return configStore.getScope(scope);
+    }
+
+    @Override
+    public String getRevision(String scope) {
+        return configStore.getRevision(scope);
     }
 
     @Override
@@ -215,23 +292,40 @@ public class DefaultConfigManager implements ConfigManager {
     @Override
     public void registerPlugin(String pluginId, ClassLoader classLoader) {
         Objects.requireNonNull(pluginId, "插件ID不能为空");
+        ConfigScopeIds.requireValid(pluginId);
+        if (ConfigScopeIds.isReserved(pluginId)) {
+            throw new IllegalArgumentException("平台保留配置域不能由插件覆盖: " + pluginId);
+        }
 
         // 缓存类加载器
         if (classLoader != null) {
             pluginClassLoaders.put(pluginId, classLoader);
+            resolver.getSources().stream()
+                    .filter(DefaultConfigSource.class::isInstance)
+                    .map(DefaultConfigSource.class::cast)
+                    .forEach(source -> source.registerClassLoader(pluginId, classLoader));
         }
 
         // 加载并注册 Schema
+        boolean schemaLoaded = false;
+        boolean schemaInvalid = false;
         for (SchemaProvider provider : schemaProviders) {
             try {
                 Optional<ConfigSchema> schema = provider.load(pluginId, classLoader);
                 if (schema.isPresent()) {
                     schemaRegistry.register(pluginId, schema.get());
+                    schemaLoaded = true;
                     break; // 使用第一个成功加载的提供者
                 }
             } catch (Exception e) {
                 log.warn("Schema 提供者 {} 加载失败: {}", provider.name(), pluginId, e);
+                schemaRegistry.markInvalid(pluginId, "Schema 加载或校验失败");
+                schemaInvalid = true;
+                break;
             }
+        }
+        if (!schemaLoaded && !schemaInvalid) {
+            schemaRegistry.markMissing(pluginId);
         }
 
         log.debug("插件配置已注册: {}", pluginId);
@@ -239,8 +333,15 @@ public class DefaultConfigManager implements ConfigManager {
 
     @Override
     public void unregisterPlugin(String pluginId) {
+        if (ConfigScopeIds.isReserved(pluginId)) {
+            throw new IllegalArgumentException("平台保留配置域不能注销: " + pluginId);
+        }
         schemaRegistry.unregister(pluginId);
         pluginClassLoaders.remove(pluginId);
+        resolver.getSources().stream()
+                .filter(DefaultConfigSource.class::isInstance)
+                .map(DefaultConfigSource.class::cast)
+                .forEach(source -> source.unregisterClassLoader(pluginId));
         log.debug("插件配置已注销: {}", pluginId);
     }
 
@@ -262,6 +363,9 @@ public class DefaultConfigManager implements ConfigManager {
 
     @Override
     public void setPluginDisabled(String pluginId, boolean disabled) {
+        ReentrantLock lock = mutationLock(DISABLED_SCOPE);
+        lock.lock();
+        try {
         java.util.Set<String> disabledSet = new java.util.LinkedHashSet<>(getDisabledPluginsList());
 
         if (disabled) {
@@ -275,6 +379,9 @@ public class DefaultConfigManager implements ConfigManager {
         resolver.invalidateCache(DISABLED_SCOPE);
 
         log.debug("插件禁用状态已更新: {} = {}", pluginId, disabled);
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
@@ -433,6 +540,124 @@ public class DefaultConfigManager implements ConfigManager {
      */
     public ConfigStore getConfigStore() {
         return configStore;
+    }
+
+    private boolean isSensitive(String scope, String key) {
+        Optional<ConfigSchema> schema = schemaRegistry.get(scope);
+        if (schema.isEmpty()) {
+            return false;
+        }
+        JsonNode root = schema.get().document();
+        JsonNode node = dereference(root, root);
+        if (sensitiveNode(root) || sensitiveNode(node)) {
+            return true;
+        }
+        for (String segment : key.split("\\.")) {
+            if (segment.isEmpty()) {
+                continue;
+            }
+            JsonNode rawNode = node.path("properties").path(segment);
+            if (rawNode.isMissingNode()) {
+                // 对组合 Schema 中无法按 properties 直接定位的路径采取保守脱敏。
+                return containsSensitive(root, root, new java.util.HashSet<>(), 0);
+            }
+            node = dereference(root, rawNode);
+            if (sensitiveNode(rawNode) || sensitiveNode(node)) {
+                return true;
+            }
+        }
+        return containsSensitive(root, node, new java.util.HashSet<>(), 0);
+    }
+
+    private boolean containsSensitive(JsonNode root,
+                                      JsonNode node,
+                                      Set<String> visitedReferences,
+                                      int depth) {
+        if (node == null || node.isMissingNode() || depth > 64) {
+            return false;
+        }
+        if (sensitiveNode(node)) {
+            return true;
+        }
+        JsonNode reference = node.path("$ref");
+        if (reference.isTextual() && reference.asText().startsWith("#")
+                && visitedReferences.add(reference.asText())) {
+            JsonNode resolved = root.at(reference.asText().substring(1));
+            if (containsSensitive(root, resolved, visitedReferences, depth + 1)) {
+                return true;
+            }
+        }
+        if (node.isContainerNode()) {
+            var children = node.elements();
+            while (children.hasNext()) {
+                if (containsSensitive(root, children.next(), visitedReferences, depth + 1)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private JsonNode dereference(JsonNode root, JsonNode node) {
+        JsonNode reference = node.path("$ref");
+        if (!reference.isTextual() || !reference.asText().startsWith("#")) {
+            return node;
+        }
+        JsonNode resolved = root.at(reference.asText().substring(1));
+        return resolved.isMissingNode() ? node : resolved;
+    }
+
+    private boolean sensitiveNode(JsonNode node) {
+        return node.path("writeOnly").asBoolean(false)
+                || node.path("x-ui-options").path("sensitive").asBoolean(false);
+    }
+
+    private String pointerToKey(String pointer) {
+        if (pointer == null || pointer.isBlank() || "/".equals(pointer)) {
+            return "";
+        }
+        String normalized = pointer.startsWith("/") ? pointer.substring(1) : pointer;
+        return java.util.Arrays.stream(normalized.split("/"))
+                .map(segment -> segment.replace("~1", "/").replace("~0", "~"))
+                .reduce((left, right) -> left + "." + right)
+                .orElse("");
+    }
+
+    private Object nestedValue(Map<String, Object> source, String key) {
+        Object current = source;
+        for (String segment : key.split("\\.")) {
+            if (!(current instanceof Map<?, ?> map)) {
+                return null;
+            }
+            current = map.get(segment);
+        }
+        return current;
+    }
+
+    private String valueAsString(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    private void publishScopeChanges(String scope,
+                                     Map<String, Object> previous,
+                                     Map<String, Object> current,
+                                     Set<String> paths) {
+        resolver.invalidateCache(scope);
+        for (String path : paths) {
+            String key = pointerToKey(path);
+            boolean sensitive = isSensitive(scope, key);
+            String oldValue = sensitive ? null : valueAsString(nestedValue(previous, key));
+            String newValue = sensitive ? null : valueAsString(nestedValue(current, key));
+            ConfigChangedEvent event = new ConfigChangedEvent(
+                    scope, key, newValue, oldValue, sensitive);
+            eventBus.publish(event);
+            notifyListeners(event);
+        }
+    }
+
+    private ReentrantLock mutationLock(String scope) {
+        ConfigScopeIds.requireValid(scope);
+        return mutationLocks.computeIfAbsent(scope, ignored -> new ReentrantLock(true));
     }
 }
 

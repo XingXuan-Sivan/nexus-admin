@@ -10,7 +10,9 @@ import com.nexusadmin.core.config.schema.SchemaValidator;
 import com.nexusadmin.core.config.schema.ValidationMessage;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -60,7 +62,7 @@ public final class JsonSchemaValidator implements SchemaValidator {
         }
 
         SchemaValidatorsConfig config = new SchemaValidatorsConfig();
-        config.setTypeLoose(true);
+        config.setTypeLoose(false);
 
         JsonSchema schema = schemaFactory.getSchema(schemaNode, config);
         Set<com.networknt.schema.ValidationMessage> networkntMessages = schema.validate(dataNode);
@@ -83,7 +85,7 @@ public final class JsonSchemaValidator implements SchemaValidator {
             JsonNode dataNode = objectMapper.readTree(dataJson);
             return validate(schemaNode, dataNode);
         } catch (Exception e) {
-            throw new IllegalArgumentException("JSON 解析失败: " + e.getMessage(), e);
+            throw new IllegalArgumentException("Schema 或配置 JSON 语法无效");
         }
     }
 
@@ -106,8 +108,34 @@ public final class JsonSchemaValidator implements SchemaValidator {
     private ValidationMessage convertMessage(com.networknt.schema.ValidationMessage msg) {
         String keyword = msg.getType();
         String path = msg.getInstanceLocation() != null ? msg.getInstanceLocation().toString() : null;
-        String message = msg.getMessage();
-        return new ValidationMessage(keyword, path, message);
+        // networknt messages may interpolate the rejected instance value. API-facing
+        // validation messages must be derived only from the schema keyword and safe params.
+        String message = "配置值不符合 Schema 约束: "
+                + (keyword == null || keyword.isBlank() ? "invalid" : keyword);
+        return new ValidationMessage(keyword, path, message, safeParams(msg));
+    }
+
+    /**
+     * 只映射 Schema 阈值与缺失属性等安全参数，绝不透传 instanceNode 或完整 details。
+     */
+    private Map<String, Object> safeParams(com.networknt.schema.ValidationMessage message) {
+        Object[] arguments = message.getArguments();
+        if (arguments == null || arguments.length == 0 || message.getType() == null) {
+            return Map.of();
+        }
+        Map<String, Object> params = new LinkedHashMap<>();
+        switch (message.getType()) {
+            case "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum",
+                    "minLength", "maxLength", "minItems", "maxItems",
+                    "minProperties", "maxProperties" -> params.put("limit", arguments[0]);
+            case "multipleOf" -> params.put("multipleOf", arguments[0]);
+            case "required" -> params.put("property", arguments[0]);
+            case "type" -> params.put("expected", arguments[0]);
+            default -> {
+                return Map.of();
+            }
+        }
+        return Map.copyOf(params);
     }
 
     /**
@@ -121,20 +149,6 @@ public final class JsonSchemaValidator implements SchemaValidator {
         String type = message.getType();
         if (type != null && type.startsWith(CUSTOM_KEYWORD_PREFIX)) {
             return true;
-        }
-
-        // 检查实例路径的最后一个片段是否以 x- 开头
-        var instanceLocation = message.getInstanceLocation();
-        if (instanceLocation != null) {
-            String path = instanceLocation.toString();
-            if (path != null && !path.isEmpty()) {
-                String lastSegment = path.contains("/")
-                        ? path.substring(path.lastIndexOf('/') + 1)
-                        : path;
-                if (lastSegment.startsWith(CUSTOM_KEYWORD_PREFIX)) {
-                    return true;
-                }
-            }
         }
 
         return false;
